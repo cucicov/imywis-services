@@ -5,20 +5,22 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+//This DTO contains all fields cumulated from all the nodes
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class NodeDataDTO {
     private String label;
-    private String name;
     private String path;
-    private Object width;
-    private Object height;
+    private Integer width;
+    private Integer height;
     private Boolean autoWidth;
     private Boolean autoHeight;
-    private Double positionX;
-    private Double positionY;
+    private Integer positionX;
+    private Integer positionY;
     private Double opacity;
+    private Object mouse;
+    private String mousePointer;
     private MetadataDTO metadata;
 }

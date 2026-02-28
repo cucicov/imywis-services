@@ -13,11 +13,6 @@ public class NodeDTO {
     private String id;
     private String nodeId;
     private String type;
-    private String nodeType;
-    private String handleType;
     private NodeDataDTO data;
     private PositionDTO position;
-    private MeasuredDTO measured;
-    private Boolean selected;
-    private Boolean dragging;
 }

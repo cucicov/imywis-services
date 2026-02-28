@@ -16,7 +16,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/nodes"))
 
                 // Authorization rules
-                .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> auth //TODO: replace with supabase auth.
                         .requestMatchers("/api/nodes").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -1,7 +1,3 @@
-### POST nodes endpoint
-POST http://localhost:8080/api/nodes
-Content-Type: application/json
-
 [
   {
     "id": "1",

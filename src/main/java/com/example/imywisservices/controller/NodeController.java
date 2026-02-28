@@ -15,9 +15,6 @@ public class NodeController {
 
     @PostMapping
     public List<NodeDTO> processNodes(@RequestBody GraphDTO graph) {
-        // According to the requirement: "accept a json, parse it and map it into a list of objects"
-        // Here we return the list of nodes from the parsed JSON.
-        System.out.println(graph.toString());
         return graph.getNodes();
     }
 }

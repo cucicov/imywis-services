@@ -1,5 +1,7 @@
 package com.example.imywisservices.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -14,7 +16,16 @@ import java.util.List;
 @AllArgsConstructor
 public class GraphDTO {
     private List<NodeDTO> nodes;
-    private List<EdgeDTO> edges;
+
+    @JsonCreator
+    public static GraphDTO fromArray(List<NodeDTO> nodes) {
+        return new GraphDTO(nodes);
+    }
+
+    @JsonValue
+    public List<NodeDTO> toJson() {
+        return nodes;
+    }
 
     @Override
     public String toString() {
