@@ -15,6 +15,7 @@ public class NodeController {
 
     @PostMapping
     public List<NodeDTO> processNodes(@RequestBody GraphDTO graph) {
+        System.out.println(graph.toString());
         return graph.getNodes();
     }
 }
