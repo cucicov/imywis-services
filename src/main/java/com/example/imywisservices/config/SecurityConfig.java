@@ -24,7 +24,7 @@ public class SecurityConfig {
 
                 // Authorization rules
                 .authorizeHttpRequests(auth -> auth //TODO: replace with supabase auth.
-                        .requestMatchers("/api/nodes").permitAll()
+                        .requestMatchers("/api/nodes", "/test").permitAll()
                         .anyRequest().authenticated()
                 )
 

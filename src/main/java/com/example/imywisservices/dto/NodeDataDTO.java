@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class NodeDataDTO {
     private String label;
+    private String type;
+    private String name;
     private String path;
     private Integer width;
     private Integer height;

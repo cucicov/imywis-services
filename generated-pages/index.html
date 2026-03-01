@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Generated Page</title>
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
+      canvas { display: block; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  </head>
+  <body>
+    <script>
+      const IMAGE_NODES = [{"src":"https://www.ephotozine.com/resize/articles/22672/I_See_You.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":56,"width":100,"height":100,"autoWidth":true,"autoHeight":false,"opacity":1.0},{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":20,"y":0,"width":500,"height":800,"autoWidth":false,"autoHeight":false,"opacity":0.5}];
+      const MOUSE_POINTER_SRC = "https://blob.gifcities.org/gifcities/2CEGEQDTBN7R4YYOD436RPUZCQQHZVZO.gif";
+      const CANVAS_W = 800;
+      const CANVAS_H = 600;
+
+      let images = [];
+      let mousePointerImg = null;
+
+      function toProxyUrl(url) {
+        if (!url) return url;
+        const trimmed = url.trim();
+        if (!trimmed) return trimmed;
+        const lower = trimmed.toLowerCase();
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+          return "https://corsproxy.io/?" + encodeURIComponent(trimmed);
+        }
+        return trimmed;
+      }
+
+      function preload() {
+        images = IMAGE_NODES.map(node => ({
+          node,
+          img: loadImage(toProxyUrl(node.src))
+        }));
+        if (MOUSE_POINTER_SRC) {
+          mousePointerImg = loadImage(toProxyUrl(MOUSE_POINTER_SRC));
+        }
+      }
+
+      function setup() {
+        createCanvas(CANVAS_W, CANVAS_H);
+        if (MOUSE_POINTER_SRC) {
+          noCursor();
+        } else {
+          cursor();
+        }
+      }
+
+      function draw() {
+        clear();
+        for (const entry of images) {
+          const node = entry.node;
+          const img = entry.img;
+          const w = node.autoWidth ? img.width : node.width;
+          const h = node.autoHeight ? img.height : node.height;
+          const opacity = Math.max(0, Math.min(1, node.opacity));
+          tint(255, opacity * 255);
+          image(img, node.x, node.y, w, h);
+        }
+        noTint();
+        if (mousePointerImg) {
+          image(mousePointerImg, mouseX, mouseY);
+        }
+      }
+    </script>
+  </body>
+</html>
