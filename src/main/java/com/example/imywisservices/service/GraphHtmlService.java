@@ -24,6 +24,7 @@ public class GraphHtmlService {
     private static final int DEFAULT_CANVAS_WIDTH = 800;
     private static final int DEFAULT_CANVAS_HEIGHT = 600;
     private static final String OUTPUT_DIR_NAME = "generated-pages";
+    private static final String OUTPUT_DIR_ENV = "GENERATED_PAGES_DIR";
     private static final String PAGE_NODE_TYPE = "pageNode";
     private static final String IMAGE_NODE_TYPE = "imageNode";
 
@@ -64,7 +65,7 @@ public class GraphHtmlService {
         int canvasHeight = data.getHeight() != null ? data.getHeight() : DEFAULT_CANVAS_HEIGHT;
 
         String fileName = normalizeFileName(data.getName());
-        Path outputDir = Paths.get(OUTPUT_DIR_NAME);
+        Path outputDir = getOutputDir();
         Path outputFile = outputDir.resolve(fileName);
 
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata());
@@ -82,7 +83,7 @@ public class GraphHtmlService {
     }
 
     private Path findMostRecentGeneratedFile() {
-        Path outputDir = Paths.get(OUTPUT_DIR_NAME);
+        Path outputDir = getOutputDir();
         if (!Files.isDirectory(outputDir)) {
             return null;
         }
@@ -229,6 +230,14 @@ public class GraphHtmlService {
 
     private int defaultInt(Integer value) {
         return value != null ? value : 0;
+    }
+
+    private Path getOutputDir() {
+        String envDir = System.getenv(OUTPUT_DIR_ENV);
+        if (envDir != null && !envDir.isBlank()) {
+            return Paths.get(envDir.trim());
+        }
+        return Paths.get(OUTPUT_DIR_NAME);
     }
 
     private String normalizeFileName(String name) {

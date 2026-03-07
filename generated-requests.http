@@ -1,5 +1,5 @@
 ### POST nodes endpoint
-POST http://localhost:8080/api/nodes
+POST https://imywis-services-production.up.railway.app/api/nodes
 Content-Type: application/json
 
 [
