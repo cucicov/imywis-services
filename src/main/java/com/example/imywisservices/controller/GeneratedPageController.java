@@ -34,6 +34,6 @@ public class GeneratedPageController {
 
     @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getLandingMessage() {
-        return ResponseEntity.ok("Hello");
+        return ResponseEntity.ok("I'll miss you when I scroll");
     }
 }

@@ -31,9 +31,13 @@ public class GraphHtmlService {
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void generatePages(GraphDTO graph) {
+    public void generatePages(GraphDTO graph) throws Exception{
         if (graph == null || graph.getNodes() == null) {
             return;
+        }
+
+        if (graph.getNodes().isEmpty()) {
+            throw new Exception("No nodes found in the graph");
         }
 
         for (NodeDTO node : graph.getNodes()) {
@@ -55,8 +59,7 @@ public class GraphHtmlService {
         return findMostRecentGeneratedFile();
     }
 
-    private Path generatePage(NodeDTO pageNode) {
-        System.out.println("Generating page.");
+    private Path generatePage(NodeDTO pageNode) throws Exception{
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
             return null;
@@ -66,31 +69,21 @@ public class GraphHtmlService {
         int canvasHeight = data.getHeight() != null ? data.getHeight() : DEFAULT_CANVAS_HEIGHT;
 
         String fileName = normalizeFileName(data.getName());
-        System.out.println("File name: " + fileName);
         Path outputDir = getOutputDir();
-        System.out.println("Output directory: " + outputDir.toString());
         Path outputFile = outputDir.resolve(fileName);
-        System.out.println("Output file: " + outputFile.toString());
 
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata());
         String imagesJson = toJson(images);
 
         String html = buildHtml(canvasWidth, canvasHeight, data.getMousePointer(), imagesJson);
 
-        try {
-            Path outputDir1 = Files.createDirectories(outputDir);
-            System.out.println("Created output directory: " + outputDir1.toString());
-            Path outputFile1 = Files.writeString(outputFile, html, StandardCharsets.UTF_8);
-            System.out.println("Wrote output file: " + outputFile1.toString());
-            return outputFile;
-        } catch (Exception e) {
-            return null;
-        }
+        Files.createDirectories(outputDir);
+        Files.writeString(outputFile, html, StandardCharsets.UTF_8);
+        return outputFile;
     }
 
     private Path findMostRecentGeneratedFile() {
         Path outputDir = getOutputDir();
-        System.out.println("Find Most Recent Generated file: Output directory: " + outputDir.toString());
         if (!Files.isDirectory(outputDir)) {
             return null;
         }

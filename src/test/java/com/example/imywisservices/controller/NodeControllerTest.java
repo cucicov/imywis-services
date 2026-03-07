@@ -221,12 +221,14 @@ public class NodeControllerTest {
                         .content(json)
                         .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(4))
-                .andExpect(jsonPath("$[0].id").value("1"))
-                .andExpect(jsonPath("$[0].data.name").value("index.html"))
-                .andExpect(jsonPath("$[0].data.metadata.sourceNodes[0].nodeId").value("2"))
-                .andExpect(jsonPath("$[1].id").value("2"))
-                .andExpect(jsonPath("$[2].id").value("3"))
-                .andExpect(jsonPath("$[3].id").value("4"));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Nodes processed successfully"))
+                .andExpect(jsonPath("$.nodes.length()").value(4))
+                .andExpect(jsonPath("$.nodes[0].id").value("1"))
+                .andExpect(jsonPath("$.nodes[0].data.name").value("index.html"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].nodeId").value("2"))
+                .andExpect(jsonPath("$.nodes[1].id").value("2"))
+                .andExpect(jsonPath("$.nodes[2].id").value("3"))
+                .andExpect(jsonPath("$.nodes[3].id").value("4"));
     }
 }
