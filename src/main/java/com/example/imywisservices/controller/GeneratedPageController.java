@@ -31,4 +31,9 @@ public class GeneratedPageController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> getLandingMessage() {
+        return ResponseEntity.ok("Hello");
+    }
 }

@@ -22,14 +22,10 @@ public class SecurityConfig {
                 // Allow browser calls from the local dev frontend
                 .cors(Customizer.withDefaults())
 
-                // Authorization rules
+                // Authorization rules (temporary: permit all)
                 .authorizeHttpRequests(auth -> auth //TODO: replace with supabase auth.
-                        .requestMatchers("/api/nodes", "/test").permitAll()
-                        .anyRequest().authenticated()
-                )
-
-                // Keep defaults (you can remove/adjust if you don't want basic login elsewhere)
-                .httpBasic(Customizer.withDefaults());
+                        .anyRequest().permitAll()
+                );
 
         return http.build();
     }
