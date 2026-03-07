@@ -168,7 +168,7 @@ public class GraphHtmlService {
                         if (!trimmed) return trimmed;
                         const lower = trimmed.toLowerCase();
                         if (lower.startsWith("http://") || lower.startsWith("https://")) {
-                          return "https://corsproxy.io/?" + encodeURIComponent(trimmed);
+                          return "https://corsproxy.io/?key=80b6bad2&url=" + encodeURIComponent(trimmed);
                         }
                         return trimmed;
                       }

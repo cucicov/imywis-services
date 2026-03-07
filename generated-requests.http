@@ -1,4 +1,6 @@
 ### POST nodes endpoint
+### http://localhost:8080/api/nodes
+### https://imywis-services-production.up.railway.app/api/nodes
 POST https://imywis-services-production.up.railway.app/api/nodes
 Content-Type: application/json
 
@@ -7,128 +9,57 @@ Content-Type: application/json
     "id": "1",
     "type": "pageNode",
     "position": {
-      "x": 226.9397944685486,
-      "y": 273.5669382913562
+      "x": 203.11946055898022,
+      "y": 310.3144783717928
     },
     "data": {
       "label": "pageNode",
+      "name": "index.html",
       "metadata": {
         "sourceNodes": [
           {
-            "nodeId": "2",
-            "nodeType": "imageNode",
-            "handleType": "red-output",
-            "data": {
-              "path": "https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR",
-              "width": "146",
-              "height": 100,
-              "autoWidth": false,
-              "autoHeight": true,
-              "positionX": "120",
-              "positionY": "200",
-              "opacity": 1
-            }
-          },
-          {
             "nodeId": "3",
-            "nodeType": "imageNode",
+            "type": "imageNode",
             "handleType": "red-output",
             "data": {
               "path": "https://www.ephotozine.com/resize/articles/22672/I_See_You.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR",
-              "width": 100,
-              "height": 100,
+              "width": "300",
+              "height": "123",
               "autoWidth": true,
-              "autoHeight": true,
-              "positionX": "300",
-              "positionY": "120",
-              "opacity": "0.7",
-              "metadata": {
-                "sourceNodes": [
-                  {
-                    "nodeId": "4",
-                    "nodeType": "imageNode",
-                    "handleType": "orange-output",
-                    "data": {
-                      "path": "bbbb",
-                      "width": 100,
-                      "height": "108",
-                      "autoWidth": false,
-                      "autoHeight": false,
-                      "positionX": "44",
-                      "positionY": "33",
-                      "opacity": 1
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "width": "900",
-      "height": "608",
-      "mouse": "4",
-      "mousePointer": "https://blob.gifcities.org/gifcities/JHYG4ATOLGHXO34YBKWVZC7AZEXXBFA2.gif"
-    }
-  },
-  {
-    "id": "5",
-    "type": "pageNode",
-    "position": {
-      "x": 1499.6268006330897,
-      "y": 644.1452378475772
-    },
-    "data": {
-      "label": "pageNode",
-      "name": "",
-      "width": 100,
-      "height": 100,
-      "mousePointer": "",
-      "metadata": {
-        "sourceNodes": [
-          {
-            "nodeId": "6",
-            "nodeType": "imageNode",
-            "handleType": "red-output",
-            "data": {
-              "path": "",
-              "width": 100,
-              "height": 100,
-              "autoWidth": false,
               "autoHeight": false,
-              "positionX": 0,
-              "positionY": 0,
+              "positionX": "423",
+              "positionY": "123",
               "opacity": 1,
               "metadata": {
                 "sourceNodes": [
                   {
-                    "nodeId": "7",
-                    "nodeType": "imageNode",
+                    "nodeId": "4",
+                    "type": "imageNode",
                     "handleType": "orange-output",
                     "data": {
-                      "path": "",
+                      "path": "asas",
                       "width": 100,
                       "height": 100,
                       "autoWidth": false,
-                      "autoHeight": false,
-                      "positionX": 0,
-                      "positionY": 0,
-                      "opacity": 1,
+                      "autoHeight": true,
+                      "positionX": "1",
+                      "positionY": "2",
+                      "opacity": "3",
                       "metadata": {
                         "sourceNodes": [
                           {
-                            "nodeId": "8",
-                            "nodeType": "imageNode",
+                            "nodeId": "5",
+                            "type": "imageNode",
                             "handleType": "orange-output",
                             "data": {
-                              "path": "",
-                              "width": 100,
-                              "height": 100,
+                              "path": "fff",
+                              "width": "4",
+                              "height": "66",
                               "autoWidth": false,
                               "autoHeight": false,
-                              "positionX": 0,
-                              "positionY": 0,
-                              "opacity": 1
+                              "positionX": "03",
+                              "positionY": "4",
+                              "opacity": "0.2"
                             }
                           }
                         ]
@@ -140,23 +71,23 @@ Content-Type: application/json
             }
           },
           {
-            "nodeId": "9",
-            "nodeType": "imageNode",
+            "nodeId": "2",
+            "type": "imageNode",
             "handleType": "red-output",
             "data": {
-              "path": "",
-              "width": 100,
-              "height": 100,
+              "path": "https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR",
+              "width": "2222",
+              "height": "414",
               "autoWidth": false,
               "autoHeight": false,
               "positionX": 0,
               "positionY": 0,
-              "opacity": 1
+              "opacity": "0.6"
             }
           },
           {
-            "nodeId": "10",
-            "nodeType": "imageNode",
+            "nodeId": "6",
+            "type": "imageNode",
             "handleType": "red-output",
             "data": {
               "path": "",
@@ -170,7 +101,10 @@ Content-Type: application/json
             }
           }
         ]
-      }
+      },
+      "mousePointer": "https://blob.gifcities.org/gifcities/2CEGEQDTBN7R4YYOD436RPUZCQQHZVZO.gif",
+      "width": "800",
+      "height": "500"
     }
   }
 ]
