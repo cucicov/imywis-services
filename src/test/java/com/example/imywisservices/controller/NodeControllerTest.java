@@ -231,4 +231,66 @@ public class NodeControllerTest {
                 .andExpect(jsonPath("$.nodes[2].id").value("3"))
                 .andExpect(jsonPath("$.nodes[3].id").value("4"));
     }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithBackgroundNode() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "label": "pageNode",
+                      "name": "with-background.html",
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "7",
+                            "type": "backgroundNode",
+                            "handleType": "red-output",
+                            "data": {
+                              "style": "tile",
+                              "width": 100,
+                              "height": 100,
+                              "autoWidth": true,
+                              "autoHeight": true,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "8",
+                                    "type": "imageNode",
+                                    "handleType": "orange-output",
+                                    "data": {
+                                      "path": "https://example.com/bg.gif",
+                                      "width": 16,
+                                      "height": 16,
+                                      "autoWidth": false,
+                                      "autoHeight": false
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "width": 800,
+                      "height": 500
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].type").value("backgroundNode"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.style").value("tile"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("imageNode"));
+    }
 }

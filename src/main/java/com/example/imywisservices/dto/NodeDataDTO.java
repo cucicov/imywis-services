@@ -15,6 +15,7 @@ public class NodeDataDTO {
     private String type;
     private String name;
     private String path;
+    private String style;
     private Integer width;
     private Integer height;
     private Boolean autoWidth;

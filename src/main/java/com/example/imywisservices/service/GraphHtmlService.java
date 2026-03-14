@@ -1,9 +1,6 @@
 package com.example.imywisservices.service;
 
-import com.example.imywisservices.dto.GraphDTO;
-import com.example.imywisservices.dto.MetadataDTO;
-import com.example.imywisservices.dto.NodeDTO;
-import com.example.imywisservices.dto.NodeDataDTO;
+import com.example.imywisservices.dto.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -27,11 +24,13 @@ public class GraphHtmlService {
     private static final String OUTPUT_DIR_ENV = "GENERATED_PAGES_DIR";
     private static final String PAGE_NODE_TYPE = "pageNode";
     private static final String IMAGE_NODE_TYPE = "imageNode";
+    private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
+    private static final String TILE_STYLE = "tile";
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void generatePages(GraphDTO graph) throws Exception{
+    public void generatePages(GraphDTO graph) throws Exception {
         if (graph == null || graph.getNodes() == null) {
             return;
         }
@@ -59,7 +58,7 @@ public class GraphHtmlService {
         return findMostRecentGeneratedFile();
     }
 
-    private Path generatePage(NodeDTO pageNode) throws Exception{
+    private Path generatePage(NodeDTO pageNode) throws Exception {
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
             return null;
@@ -72,10 +71,16 @@ public class GraphHtmlService {
         Path outputDir = getOutputDir();
         Path outputFile = outputDir.resolve(fileName);
 
+        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight);
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata());
-        String imagesJson = toJson(images);
 
-        String html = buildHtml(canvasWidth, canvasHeight, data.getMousePointer(), imagesJson);
+        String html = buildHtml(
+                canvasWidth,
+                canvasHeight,
+                data.getMousePointer(),
+                toJson(backgrounds),
+                toJson(images)
+        );
 
         Files.createDirectories(outputDir);
         Files.writeString(outputFile, html, StandardCharsets.UTF_8);
@@ -130,7 +135,83 @@ public class GraphHtmlService {
         return images;
     }
 
-    private String buildHtml(int canvasWidth, int canvasHeight, String mousePointer, String imagesJson) {
+    private List<BackgroundNodePayload> extractBackgroundNodes(MetadataDTO metadata, int parentWidth, int parentHeight) {
+        if (metadata == null || metadata.getSourceNodes() == null) {
+            return Collections.emptyList();
+        }
+
+        List<BackgroundNodePayload> backgrounds = new ArrayList<>();
+        int index = 0;
+
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !BACKGROUND_NODE_TYPE.equals(node.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = node.getData();
+            if (data == null) {
+                continue;
+            }
+
+            int width = resolveParentSizedDimension(data.getWidth(), data.getAutoWidth(), parentWidth);
+            int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
+            String style = data.getStyle() == null ? "" : data.getStyle().trim();
+            ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
+
+            backgrounds.add(new BackgroundNodePayload(
+                    firstNonBlank(node.getNodeId(), node.getId(), "background-" + index),
+                    style,
+                    defaultInt(data.getPositionX()),
+                    defaultInt(data.getPositionY()),
+                    width,
+                    height,
+                    Boolean.TRUE.equals(data.getAutoWidth()),
+                    Boolean.TRUE.equals(data.getAutoHeight()),
+                    tileImage.getOpacity(),
+                    TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null
+            ));
+
+            index++;
+        }
+
+        return backgrounds;
+    }
+
+    private ImageNodePayload extractFirstImageNode(MetadataDTO metadata) {
+        if (metadata == null || metadata.getSourceNodes() == null) {
+            return null;
+        }
+
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !IMAGE_NODE_TYPE.equals(node.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = node.getData();
+            if (data == null || data.getPath() == null || data.getPath().isBlank()) {
+                continue;
+            }
+
+            return new ImageNodePayload(
+                    data.getPath(),
+                    defaultInt(data.getPositionX()),
+                    defaultInt(data.getPositionY()),
+                    data.getWidth(),
+                    data.getHeight(),
+                    Boolean.TRUE.equals(data.getAutoWidth()),
+                    Boolean.TRUE.equals(data.getAutoHeight()),
+                    data.getOpacity() != null ? data.getOpacity() : 1.0
+            );
+        }
+
+        return null;
+    }
+
+    private String buildHtml(int canvasWidth,
+                             int canvasHeight,
+                             String mousePointer,
+                             String backgroundJson,
+                             String imagesJson) {
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String template = """
                 <!doctype html>
@@ -141,20 +222,42 @@ public class GraphHtmlService {
                     <title>Generated Page</title>
                     <style>
                       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
-                      canvas { display: block; }
+                      #stage { position: relative; width: __CANVAS_W__px; height: __CANVAS_H__px; overflow: hidden; }
+                      #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+                      #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 2; }
+                      #mouse-pointer {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        z-index: 3;
+                        pointer-events: none;
+                        display: none;
+                        transform: translate(0px, 0px);
+                      }
                     </style>
                     <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
                   </head>
                   <body>
+                    <div id="stage">
+                      <div id="background-layer"></div>
+                      <div id="image-layer"></div>
+                      <img id="mouse-pointer" alt="mouse-pointer"/>
+                    </div>
                     <script>
+                      const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
                       const CANVAS_W = __CANVAS_W__;
                       const CANVAS_H = __CANVAS_H__;
-                
-                      let images = [];
-                      let mousePointerImg = null;
-                
+
+                      const TILE_STYLE = "tile";
+                      const imageCache = new Map();
+                      const stageElement = document.getElementById("stage");
+                      const backgroundLayerElement = document.getElementById("background-layer");
+                      const imageLayerElement = document.getElementById("image-layer");
+                      const mousePointerElement = document.getElementById("mouse-pointer");
+
                       function toProxyUrl(url) {
                         if (!url) return url;
                         const trimmed = url.trim();
@@ -165,56 +268,259 @@ public class GraphHtmlService {
                         }
                         return trimmed;
                       }
-                
-                      function preload() {
-                        images = IMAGE_NODES.map(node => ({
-                          node,
-                          img: loadImage(toProxyUrl(node.src))
-                        }));
-                        if (MOUSE_POINTER_SRC) {
-                          mousePointerImg = loadImage(toProxyUrl(MOUSE_POINTER_SRC));
+
+                      function clamp01(value) {
+                        const n = Number(value);
+                        if (Number.isNaN(n)) return 1;
+                        return Math.max(0, Math.min(1, n));
+                      }
+
+                      function isLikelyGif(src) {
+                        if (!src) return false;
+                        return /\\.gif(?:$|[?#])/i.test(src);
+                      }
+
+                      function getImageResource(src) {
+                        if (!src) return null;
+                        if (imageCache.has(src)) {
+                          return imageCache.get(src);
+                        }
+
+                        const img = new Image();
+
+                        const resource = {
+                          src,
+                          img,
+                          loaded: false,
+                          errored: false,
+                          usedProxy: false,
+                          onLoadCallbacks: []
+                        };
+
+                        img.onload = () => {
+                          resource.loaded = true;
+                          for (const callback of resource.onLoadCallbacks) {
+                            try {
+                              callback();
+                            } catch (e) {
+                              // noop
+                            }
+                          }
+                        };
+
+                        img.onerror = () => {
+                          if (!resource.usedProxy && !isLikelyGif(src)) {
+                            const lower = src.toLowerCase();
+                            if (lower.startsWith("http://") || lower.startsWith("https://")) {
+                              resource.usedProxy = true;
+                              img.src = toProxyUrl(src);
+                              return;
+                            }
+                          }
+                          resource.errored = true;
+                        };
+
+                        // Prefer direct URL to preserve animated GIF behavior in canvas draws.
+                        img.src = src.trim();
+                        imageCache.set(src, resource);
+                        return resource;
+                      }
+
+                      function imageNaturalSize(resource) {
+                        const img = resource.img;
+                        return {
+                          width: img.naturalWidth || img.width || 0,
+                          height: img.naturalHeight || img.height || 0
+                        };
+                      }
+
+                      function resolveRenderSize(node, naturalWidth, naturalHeight) {
+                        const hasWidth = Number(node.width) > 0;
+                        const hasHeight = Number(node.height) > 0;
+                        const width = node.autoWidth ? naturalWidth : (hasWidth ? Number(node.width) : naturalWidth);
+                        const height = node.autoHeight ? naturalHeight : (hasHeight ? Number(node.height) : naturalHeight);
+                        return {
+                          width: Math.max(0, width),
+                          height: Math.max(0, height)
+                        };
+                      }
+
+                      function warmupResources() {
+                        for (const node of IMAGE_NODES) {
+                          getImageResource(node.src);
+                        }
+
+                        for (const node of BACKGROUND_NODES) {
+                          if (node && node.tileImage && node.tileImage.src) {
+                            getImageResource(node.tileImage.src);
+                          }
                         }
                       }
-                
-                      function setup() {
-                        createCanvas(CANVAS_W, CANVAS_H);
-                        if (MOUSE_POINTER_SRC) {
-                          noCursor();
-                        } else {
+
+                      function resolveNodeSurfaceSize(node) {
+                        const width = node.autoWidth ? CANVAS_W : Math.max(0, Number(node.width) || 0);
+                        const height = node.autoHeight ? CANVAS_H : Math.max(0, Number(node.height) || 0);
+                        return { width, height };
+                      }
+
+                      function buildBackgroundNodes() {
+                        backgroundLayerElement.innerHTML = "";
+
+                        for (const node of BACKGROUND_NODES) {
+                          if (!node) {
+                            continue;
+                          }
+
+                          const surface = resolveNodeSurfaceSize(node);
+                          if (surface.width <= 0 || surface.height <= 0) {
+                            continue;
+                          }
+
+                          const wrapper = document.createElement("div");
+                          wrapper.style.position = "absolute";
+                          wrapper.style.left = `${node.x}px`;
+                          wrapper.style.top = `${node.y}px`;
+                          wrapper.style.width = `${surface.width}px`;
+                          wrapper.style.height = `${surface.height}px`;
+                          wrapper.style.overflow = "hidden";
+                          wrapper.style.opacity = String(clamp01(node.opacity));
+
+                          if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileImage && node.tileImage.src) {
+                            const tile = document.createElement("div");
+                            tile.style.position = "absolute";
+                            tile.style.inset = "0";
+                            tile.style.backgroundRepeat = "repeat";
+
+                            const tileSrc = node.tileImage.src.trim();
+                            tile.style.backgroundImage = "url('" + encodeURI(tileSrc) + "')";
+
+                            const resource = getImageResource(tileSrc);
+                            const applyTileSize = () => {
+                              if (!resource || !resource.loaded || resource.errored) {
+                                return;
+                              }
+                              const natural = imageNaturalSize(resource);
+                              const size = resolveRenderSize(node.tileImage, natural.width, natural.height);
+                              if (size.width > 0 && size.height > 0) {
+                                tile.style.backgroundSize = `${size.width}px ${size.height}px`;
+                              }
+                            };
+
+                            if (resource && resource.loaded) {
+                              applyTileSize();
+                            } else if (resource) {
+                              resource.onLoadCallbacks.push(applyTileSize);
+                            }
+
+                            wrapper.appendChild(tile);
+                          }
+
+                          backgroundLayerElement.appendChild(wrapper);
+                        }
+                      }
+
+                      function setupMousePointer() {
+                        if (!MOUSE_POINTER_SRC) {
+                          mousePointerElement.style.display = "none";
                           cursor();
+                          return;
+                        }
+
+                        const src = String(MOUSE_POINTER_SRC).trim();
+                        if (!src) {
+                          mousePointerElement.style.display = "none";
+                          cursor();
+                          return;
+                        }
+
+                        mousePointerElement.src = src;
+                        mousePointerElement.style.display = "block";
+                        noCursor();
+                      }
+
+                      function buildImageNodes() {
+                        imageLayerElement.innerHTML = "";
+
+                        for (const node of IMAGE_NODES) {
+                          const resource = getImageResource(node.src);
+                          if (!resource) {
+                            continue;
+                          }
+
+                          const imageElement = document.createElement("img");
+                          imageElement.style.position = "absolute";
+                          imageElement.style.left = `${node.x}px`;
+                          imageElement.style.top = `${node.y}px`;
+                          imageElement.style.opacity = String(clamp01(node.opacity));
+                          imageElement.style.pointerEvents = "none";
+                          imageElement.decoding = "async";
+
+                          const applyImageSize = () => {
+                            if (!resource.loaded || resource.errored) {
+                              return;
+                            }
+                            imageElement.src = resource.img.src;
+                            const naturalSize = imageNaturalSize(resource);
+                            const size = resolveRenderSize(node, naturalSize.width, naturalSize.height);
+                            if (size.width > 0 && size.height > 0) {
+                              imageElement.style.width = `${size.width}px`;
+                              imageElement.style.height = `${size.height}px`;
+                            }
+                          };
+
+                          if (resource.loaded) {
+                            applyImageSize();
+                          } else {
+                            resource.onLoadCallbacks.push(applyImageSize);
+                          }
+
+                          imageElement.src = resource.img.src;
+                          imageLayerElement.appendChild(imageElement);
                         }
                       }
-                
+
+                      function drawMousePointer() {
+                        if (mousePointerElement.style.display === "none") {
+                          return;
+                        }
+                        mousePointerElement.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+                      }
+
+                      function setup() {
+                        const canvas = createCanvas(CANVAS_W, CANVAS_H);
+                        canvas.parent(stageElement);
+                        warmupResources();
+                        buildBackgroundNodes();
+                        buildImageNodes();
+                        setupMousePointer();
+
+                        if (typeof window !== "undefined") {
+                          window.addEventListener("mousemove", () => {
+                            drawMousePointer();
+                          });
+                        }
+                      }
+
                       function draw() {
                         clear();
-                        for (const entry of images) {
-                          const node = entry.node;
-                          const img = entry.img;
-                          const w = node.autoWidth ? img.width : node.width;
-                          const h = node.autoHeight ? img.height : node.height;
-                          const opacity = Math.max(0, Math.min(1, node.opacity));
-                          tint(255, opacity * 255);
-                          image(img, node.x, node.y, w, h);
-                        }
-                        noTint();
-                        if (mousePointerImg) {
-                          image(mousePointerImg, mouseX, mouseY);
-                        }
+                        drawMousePointer();
                       }
                     </script>
                   </body>
                 </html>
                 """;
+
         return template
+                .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
                 .replace("__CANVAS_W__", String.valueOf(canvasWidth))
                 .replace("__CANVAS_H__", String.valueOf(canvasHeight));
     }
 
-    private String toJson(List<ImageNodePayload> images) {
+    private String toJson(Object value) {
         try {
-            return objectMapper.writeValueAsString(images);
+            return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
             return "[]";
         }
@@ -230,6 +536,27 @@ public class GraphHtmlService {
 
     private int defaultInt(Integer value) {
         return value != null ? value : 0;
+    }
+
+    private int resolveParentSizedDimension(Integer value, Boolean auto, int parentDimension) {
+        if (Boolean.TRUE.equals(auto)) {
+            return parentDimension;
+        }
+        return value != null ? value : parentDimension;
+    }
+
+    private String firstNonBlank(String... candidates) {
+        if (candidates == null) {
+            return "";
+        }
+
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate;
+            }
+        }
+
+        return "";
     }
 
     private Path getOutputDir() {
@@ -253,32 +580,38 @@ public class GraphHtmlService {
         return base;
     }
 
-    private static class ImageNodePayload {
-        public final String src;
+    private static class BackgroundNodePayload {
+        public final String cacheKey;
+        public final String style;
         public final int x;
         public final int y;
-        public final Integer width;
-        public final Integer height;
+        public final int width;
+        public final int height;
         public final boolean autoWidth;
         public final boolean autoHeight;
         public final double opacity;
+        public final ImageNodePayload tileImage;
 
-        private ImageNodePayload(String src,
-                                 int x,
-                                 int y,
-                                 Integer width,
-                                 Integer height,
-                                 boolean autoWidth,
-                                 boolean autoHeight,
-                                 double opacity) {
-            this.src = Objects.requireNonNull(src);
+        private BackgroundNodePayload(String cacheKey,
+                                      String style,
+                                      int x,
+                                      int y,
+                                      int width,
+                                      int height,
+                                      boolean autoWidth,
+                                      boolean autoHeight,
+                                      double opacity,
+                                      ImageNodePayload tileImage) {
+            this.cacheKey = Objects.requireNonNullElse(cacheKey, "");
+            this.style = Objects.requireNonNullElse(style, "");
             this.x = x;
             this.y = y;
-            this.width = width != null ? width : 0;
-            this.height = height != null ? height : 0;
+            this.width = width;
+            this.height = height;
             this.autoWidth = autoWidth;
             this.autoHeight = autoHeight;
             this.opacity = opacity;
+            this.tileImage = tileImage;
         }
     }
 }
