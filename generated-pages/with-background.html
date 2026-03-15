@@ -9,12 +9,13 @@
       #stage { position: relative; width: 800px; height: 500px; overflow: hidden; }
       #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
       #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 2; }
+      #text-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; }
       #mouse-pointer {
         position: absolute;
         left: 0;
         top: 0;
-        z-index: 3;
+        z-index: 4;
         pointer-events: none;
         display: none;
         transform: translate(0px, 0px);
@@ -26,11 +27,13 @@
     <div id="stage">
       <div id="background-layer"></div>
       <div id="image-layer"></div>
+      <div id="text-layer"></div>
       <img id="mouse-pointer" alt="mouse-pointer"/>
     </div>
     <script>
       const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":800,"height":500,"autoWidth":true,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://example.com/bg.gif","x":0,"y":0,"width":16,"height":16,"autoWidth":false,"autoHeight":false,"opacity":1.0}}];
       const IMAGE_NODES = [];
+      const TEXT_NODES = [{"text":"Hello Text Node","font":"sans-serif","size":16,"width":250,"height":300,"x":390,"y":300,"opacity":1.0,"bold":true,"italic":true,"underline":true,"strikethrough":true,"caps":true}];
       const PAGE_BACKGROUND_COLOR = "#cceeff";
       const MOUSE_POINTER_SRC = "";
       const CANVAS_W = 800;
@@ -41,6 +44,7 @@
       const stageElement = document.getElementById("stage");
       const backgroundLayerElement = document.getElementById("background-layer");
       const imageLayerElement = document.getElementById("image-layer");
+      const textLayerElement = document.getElementById("text-layer");
       const mousePointerElement = document.getElementById("mouse-pointer");
 
       function toProxyUrl(url) {
@@ -273,6 +277,45 @@
         }
       }
 
+      function buildTextNodes() {
+        textLayerElement.innerHTML = "";
+
+        for (const node of TEXT_NODES) {
+          const width = Math.max(0, Number(node.width) || 0);
+          const height = Math.max(0, Number(node.height) || 0);
+          if (width <= 0 || height <= 0) {
+            continue;
+          }
+
+          const textElement = document.createElement("div");
+          textElement.style.position = "absolute";
+          textElement.style.left = `${Number(node.x) || 0}px`;
+          textElement.style.top = `${Number(node.y) || 0}px`;
+          textElement.style.width = `${width}px`;
+          textElement.style.height = `${height}px`;
+          textElement.style.opacity = String(clamp01(node.opacity));
+          textElement.style.overflow = "hidden";
+          textElement.style.whiteSpace = "pre-wrap";
+          textElement.style.wordBreak = "break-word";
+          textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+          textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+          textElement.style.fontWeight = node.bold ? "700" : "400";
+          textElement.style.fontStyle = node.italic ? "italic" : "normal";
+          textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+          const decorations = [];
+          if (node.underline) {
+            decorations.push("underline");
+          }
+          if (node.strikethrough) {
+            decorations.push("line-through");
+          }
+          textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+          textElement.textContent = node.text || "";
+          textLayerElement.appendChild(textElement);
+        }
+      }
+
       function drawMousePointer() {
         if (mousePointerElement.style.display === "none") {
           return;
@@ -287,6 +330,7 @@
         warmupResources();
         buildBackgroundNodes();
         buildImageNodes();
+        buildTextNodes();
         setupMousePointer();
 
         if (typeof window !== "undefined") {

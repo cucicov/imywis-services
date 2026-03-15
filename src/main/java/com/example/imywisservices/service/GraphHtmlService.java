@@ -25,6 +25,7 @@ public class GraphHtmlService {
     private static final String PAGE_NODE_TYPE = "pageNode";
     private static final String IMAGE_NODE_TYPE = "imageNode";
     private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
+    private static final String TEXT_NODE_TYPE = "textNode";
     private static final String TILE_STYLE = "tile";
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
@@ -73,6 +74,7 @@ public class GraphHtmlService {
 
         List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight);
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata());
+        List<TextNodePayload> texts = extractTextNodes(data.getMetadata());
 
         String html = buildHtml(
                 canvasWidth,
@@ -80,7 +82,8 @@ public class GraphHtmlService {
                 data.getBackgroundColor(),
                 data.getMousePointer(),
                 toJson(backgrounds),
-                toJson(images)
+                toJson(images),
+                toJson(texts)
         );
 
         Files.createDirectories(outputDir);
@@ -178,6 +181,42 @@ public class GraphHtmlService {
         return backgrounds;
     }
 
+    private List<TextNodePayload> extractTextNodes(MetadataDTO metadata) {
+        if (metadata == null || metadata.getSourceNodes() == null) {
+            return Collections.emptyList();
+        }
+
+        List<TextNodePayload> texts = new ArrayList<>();
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !TEXT_NODE_TYPE.equals(node.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = node.getData();
+            if (data == null || data.getText() == null || data.getText().isBlank()) {
+                continue;
+            }
+
+            texts.add(new TextNodePayload(
+                    data.getText(),
+                    firstNonBlank(data.getFont(), "sans-serif"),
+                    positiveIntOrDefault(data.getSize(), 16),
+                    positiveIntOrDefault(data.getWidth(), 0),
+                    positiveIntOrDefault(data.getHeight(), 0),
+                    defaultInt(data.getPositionX()),
+                    defaultInt(data.getPositionY()),
+                    data.getOpacity() != null ? data.getOpacity() : 1.0,
+                    Boolean.TRUE.equals(data.getBold()),
+                    Boolean.TRUE.equals(data.getItalic()),
+                    Boolean.TRUE.equals(data.getUnderline()),
+                    Boolean.TRUE.equals(data.getStrikethrough()),
+                    Boolean.TRUE.equals(data.getCaps())
+            ));
+        }
+
+        return texts;
+    }
+
     private ImageNodePayload extractFirstImageNode(MetadataDTO metadata) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
@@ -213,7 +252,8 @@ public class GraphHtmlService {
                              String backgroundColor,
                              String mousePointer,
                              String backgroundJson,
-                             String imagesJson) {
+                             String imagesJson,
+                             String textJson) {
         String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String template = """
@@ -228,12 +268,13 @@ public class GraphHtmlService {
                       #stage { position: relative; width: __CANVAS_W__px; height: __CANVAS_H__px; overflow: hidden; }
                       #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
                       #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 2; }
+                      #text-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; }
                       #mouse-pointer {
                         position: absolute;
                         left: 0;
                         top: 0;
-                        z-index: 3;
+                        z-index: 4;
                         pointer-events: none;
                         display: none;
                         transform: translate(0px, 0px);
@@ -245,11 +286,13 @@ public class GraphHtmlService {
                     <div id="stage">
                       <div id="background-layer"></div>
                       <div id="image-layer"></div>
+                      <div id="text-layer"></div>
                       <img id="mouse-pointer" alt="mouse-pointer"/>
                     </div>
                     <script>
                       const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
+                      const TEXT_NODES = __TEXT_NODES__;
                       const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
                       const CANVAS_W = __CANVAS_W__;
@@ -260,6 +303,7 @@ public class GraphHtmlService {
                       const stageElement = document.getElementById("stage");
                       const backgroundLayerElement = document.getElementById("background-layer");
                       const imageLayerElement = document.getElementById("image-layer");
+                      const textLayerElement = document.getElementById("text-layer");
                       const mousePointerElement = document.getElementById("mouse-pointer");
 
                       function toProxyUrl(url) {
@@ -492,6 +536,45 @@ public class GraphHtmlService {
                         }
                       }
 
+                      function buildTextNodes() {
+                        textLayerElement.innerHTML = "";
+
+                        for (const node of TEXT_NODES) {
+                          const width = Math.max(0, Number(node.width) || 0);
+                          const height = Math.max(0, Number(node.height) || 0);
+                          if (width <= 0 || height <= 0) {
+                            continue;
+                          }
+
+                          const textElement = document.createElement("div");
+                          textElement.style.position = "absolute";
+                          textElement.style.left = `${Number(node.x) || 0}px`;
+                          textElement.style.top = `${Number(node.y) || 0}px`;
+                          textElement.style.width = `${width}px`;
+                          textElement.style.height = `${height}px`;
+                          textElement.style.opacity = String(clamp01(node.opacity));
+                          textElement.style.overflow = "hidden";
+                          textElement.style.whiteSpace = "pre-wrap";
+                          textElement.style.wordBreak = "break-word";
+                          textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+                          textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+                          textElement.style.fontWeight = node.bold ? "700" : "400";
+                          textElement.style.fontStyle = node.italic ? "italic" : "normal";
+                          textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+                          const decorations = [];
+                          if (node.underline) {
+                            decorations.push("underline");
+                          }
+                          if (node.strikethrough) {
+                            decorations.push("line-through");
+                          }
+                          textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+                          textElement.textContent = node.text || "";
+                          textLayerElement.appendChild(textElement);
+                        }
+                      }
+
                       function drawMousePointer() {
                         if (mousePointerElement.style.display === "none") {
                           return;
@@ -506,6 +589,7 @@ public class GraphHtmlService {
                         warmupResources();
                         buildBackgroundNodes();
                         buildImageNodes();
+                        buildTextNodes();
                         setupMousePointer();
 
                         if (typeof window !== "undefined") {
@@ -527,6 +611,7 @@ public class GraphHtmlService {
         return template
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
+                .replace("__TEXT_NODES__", textJson)
                 .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
                 .replace("__CANVAS_W__", String.valueOf(canvasWidth))
@@ -551,6 +636,13 @@ public class GraphHtmlService {
 
     private int defaultInt(Integer value) {
         return value != null ? value : 0;
+    }
+
+    private int positiveIntOrDefault(Integer value, int defaultValue) {
+        if (value == null || value <= 0) {
+            return defaultValue;
+        }
+        return value;
     }
 
     private int resolveParentSizedDimension(Integer value, Boolean auto, int parentDimension) {

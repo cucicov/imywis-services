@@ -277,6 +277,26 @@ public class NodeControllerTest {
                                 ]
                               }
                             }
+                          },
+                          {
+                            "nodeId": "9",
+                            "type": "textNode",
+                            "handleType": "red-output",
+                            "data": {
+                              "text": "Hello Text Node",
+                              "font": "sans-serif",
+                              "size": 16,
+                              "width": 250,
+                              "height": 300,
+                              "positionX": 390,
+                              "positionY": 300,
+                              "opacity": 1,
+                              "bold": true,
+                              "italic": true,
+                              "underline": true,
+                              "strikethrough": true,
+                              "caps": true
+                            }
                           }
                         ]
                       },
@@ -297,7 +317,14 @@ public class NodeControllerTest {
                 .andExpect(jsonPath("$.nodes[0].data.backgroundColor").value("#cceeff"))
                 .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].type").value("backgroundNode"))
                 .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.style").value("tile"))
-                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("imageNode"));
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("imageNode"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].type").value("textNode"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.text").value("Hello Text Node"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.bold").value(true))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.italic").value(true))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.underline").value(true))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.strikethrough").value(true))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[1].data.caps").value(true));
 
         Path generatedFile = Path.of("generated-pages", "with-background.html");
         String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
@@ -308,6 +335,14 @@ public class NodeControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("const PAGE_BACKGROUND_COLOR = \"#cceeff\";"),
                 "Generated HTML should include serialized page background color."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("const TEXT_NODES = [{\"text\":\"Hello Text Node\""),
+                "Generated HTML should include serialized text nodes."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("textElement.style.textDecoration = decorations.length > 0 ? decorations.join(\" \") : \"none\";"),
+                "Generated HTML should apply text decorations for text nodes."
         );
     }
 }

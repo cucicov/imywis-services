@@ -6,15 +6,16 @@
     <title>Generated Page</title>
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
-      #stage { position: relative; width: 1800px; height: 500px; overflow: hidden; }
+      #stage { position: relative; width: 800px; height: 500px; overflow: hidden; }
       #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
       #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 2; }
+      #text-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; }
       #mouse-pointer {
         position: absolute;
         left: 0;
         top: 0;
-        z-index: 3;
+        z-index: 4;
         pointer-events: none;
         display: none;
         transform: translate(0px, 0px);
@@ -26,14 +27,16 @@
     <div id="stage">
       <div id="background-layer"></div>
       <div id="image-layer"></div>
+      <div id="text-layer"></div>
       <img id="mouse-pointer" alt="mouse-pointer"/>
     </div>
     <script>
-      const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":2100,"height":500,"autoWidth":false,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":1200,"height":1200,"autoWidth":false,"autoHeight":false,"opacity":1.0}}];
+      const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":800,"height":500,"autoWidth":true,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":1200,"height":1200,"autoWidth":false,"autoHeight":false,"opacity":1.0}}];
       const IMAGE_NODES = [{"src":"https://www.ephotozine.com/resize/articles/22672/I_See_You.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":423,"y":123,"width":300,"height":123,"autoWidth":true,"autoHeight":false,"opacity":1.0},{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":2222,"height":414,"autoWidth":false,"autoHeight":false,"opacity":0.6}];
-      const PAGE_BACKGROUND_COLOR = "#3d3846";
+      const TEXT_NODES = [{"text":" Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque in cursus nunc, sit amet bibendum nulla. Quisque sit amet felis ante. Donec iaculis purus at accumsan lobortis. Nam in elementum augue. Etiam eget ex quis libero auctor rhoncus sed id mauris. Phasellus venenatis non erat et faucibus. Fusce in elit finibus, porta orci sit amet, mollis nisi. Cras nulla ipsum, volutpat nec rutrum eu, varius ac dolor. Maecenas dolor metus, sagittis ac lobortis ac, fringilla sit amet velit. Morbi commodo ligula ligula, sodales dignissim ex viverra vel.\n\nInteger lobortis turpis vitae augue aliquam condimentum. Duis pretium sollicitudin purus, sed iaculis elit. Etiam et orci eget mi sollicitudin malesuada quis non nulla. Integer volutpat molestie tincidunt. Maecenas sit amet nulla turpis. Praesent dignissim mauris nec mauris pulvinar eleifend. Aenean pharetra dui sit amet mi volutpat porta. Nunc et arcu ante. Aliquam ut enim tempus, lobortis nisi id, condimentum sapien. Sed non vestibulum nibh. Nulla nibh nibh, vulputate pharetra dignissim quis, convallis et elit. Donec aliquet porttitor orci, in malesuada magna ullamcorper a.\n\nNam nec felis erat. Mauris metus nibh, varius ut diam quis, lobortis consequat tellus. Duis vestibulum, purus at venenatis pretium, nibh elit interdum lorem, eget auctor tortor justo eu metus. In pretium, lectus ut tristique luctus, purus sem malesuada lectus, maximus finibus magna felis sit amet est. Nulla lobortis mauris at tempor consectetur. Praesent efficitur justo sed sodales egestas. Vivamus sodales nunc a turpis sagittis commodo. Donec mollis dapibus tristique. ","font":"sans-serif","size":16,"width":250,"height":120,"x":200,"y":250,"opacity":1.0,"bold":true,"italic":true,"underline":true,"strikethrough":false,"caps":true}];
+      const PAGE_BACKGROUND_COLOR = "";
       const MOUSE_POINTER_SRC = "https://blob.gifcities.org/gifcities/2CEGEQDTBN7R4YYOD436RPUZCQQHZVZO.gif";
-      const CANVAS_W = 1800;
+      const CANVAS_W = 800;
       const CANVAS_H = 500;
 
       const TILE_STYLE = "tile";
@@ -41,6 +44,7 @@
       const stageElement = document.getElementById("stage");
       const backgroundLayerElement = document.getElementById("background-layer");
       const imageLayerElement = document.getElementById("image-layer");
+      const textLayerElement = document.getElementById("text-layer");
       const mousePointerElement = document.getElementById("mouse-pointer");
 
       function toProxyUrl(url) {
@@ -273,6 +277,45 @@
         }
       }
 
+      function buildTextNodes() {
+        textLayerElement.innerHTML = "";
+
+        for (const node of TEXT_NODES) {
+          const width = Math.max(0, Number(node.width) || 0);
+          const height = Math.max(0, Number(node.height) || 0);
+          if (width <= 0 || height <= 0) {
+            continue;
+          }
+
+          const textElement = document.createElement("div");
+          textElement.style.position = "absolute";
+          textElement.style.left = `${Number(node.x) || 0}px`;
+          textElement.style.top = `${Number(node.y) || 0}px`;
+          textElement.style.width = `${width}px`;
+          textElement.style.height = `${height}px`;
+          textElement.style.opacity = String(clamp01(node.opacity));
+          textElement.style.overflow = "hidden";
+          textElement.style.whiteSpace = "pre-wrap";
+          textElement.style.wordBreak = "break-word";
+          textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+          textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+          textElement.style.fontWeight = node.bold ? "700" : "400";
+          textElement.style.fontStyle = node.italic ? "italic" : "normal";
+          textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+          const decorations = [];
+          if (node.underline) {
+            decorations.push("underline");
+          }
+          if (node.strikethrough) {
+            decorations.push("line-through");
+          }
+          textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+          textElement.textContent = node.text || "";
+          textLayerElement.appendChild(textElement);
+        }
+      }
+
       function drawMousePointer() {
         if (mousePointerElement.style.display === "none") {
           return;
@@ -287,6 +330,7 @@
         warmupResources();
         buildBackgroundNodes();
         buildImageNodes();
+        buildTextNodes();
         setupMousePointer();
 
         if (typeof window !== "undefined") {
