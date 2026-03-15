@@ -77,6 +77,7 @@ public class GraphHtmlService {
         String html = buildHtml(
                 canvasWidth,
                 canvasHeight,
+                data.getBackgroundColor(),
                 data.getMousePointer(),
                 toJson(backgrounds),
                 toJson(images)
@@ -209,9 +210,11 @@ public class GraphHtmlService {
 
     private String buildHtml(int canvasWidth,
                              int canvasHeight,
+                             String backgroundColor,
                              String mousePointer,
                              String backgroundJson,
                              String imagesJson) {
+        String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String template = """
                 <!doctype html>
@@ -247,6 +250,7 @@ public class GraphHtmlService {
                     <script>
                       const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
+                      const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
                       const CANVAS_W = __CANVAS_W__;
                       const CANVAS_H = __CANVAS_H__;
@@ -438,6 +442,15 @@ public class GraphHtmlService {
                         noCursor();
                       }
 
+                      function applyPageBackgroundColor() {
+                        const color = typeof PAGE_BACKGROUND_COLOR === "string" ? PAGE_BACKGROUND_COLOR.trim() : "";
+                        if (!color) {
+                          return;
+                        }
+                        document.documentElement.style.backgroundColor = color;
+                        document.body.style.backgroundColor = color;
+                      }
+
                       function buildImageNodes() {
                         imageLayerElement.innerHTML = "";
 
@@ -489,6 +502,7 @@ public class GraphHtmlService {
                       function setup() {
                         const canvas = createCanvas(CANVAS_W, CANVAS_H);
                         canvas.parent(stageElement);
+                        applyPageBackgroundColor();
                         warmupResources();
                         buildBackgroundNodes();
                         buildImageNodes();
@@ -513,6 +527,7 @@ public class GraphHtmlService {
         return template
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
+                .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
                 .replace("__CANVAS_W__", String.valueOf(canvasWidth))
                 .replace("__CANVAS_H__", String.valueOf(canvasHeight));

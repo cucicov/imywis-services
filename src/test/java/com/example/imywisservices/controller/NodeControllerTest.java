@@ -8,6 +8,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -243,6 +247,7 @@ public class NodeControllerTest {
                     "data": {
                       "label": "pageNode",
                       "name": "with-background.html",
+                      "backgroundColor": "#cceeff",
                       "metadata": {
                         "sourceNodes": [
                           {
@@ -289,8 +294,20 @@ public class NodeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.nodes.length()").value(1))
+                .andExpect(jsonPath("$.nodes[0].data.backgroundColor").value("#cceeff"))
                 .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].type").value("backgroundNode"))
                 .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.style").value("tile"))
                 .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("imageNode"));
+
+        Path generatedFile = Path.of("generated-pages", "with-background.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("document.documentElement.style.backgroundColor = color"),
+                "Generated HTML should apply page background color to the document root."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("const PAGE_BACKGROUND_COLOR = \"#cceeff\";"),
+                "Generated HTML should include serialized page background color."
+        );
     }
 }

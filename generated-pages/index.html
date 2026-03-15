@@ -6,7 +6,7 @@
     <title>Generated Page</title>
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
-      #stage { position: relative; width: 800px; height: 500px; overflow: hidden; }
+      #stage { position: relative; width: 1800px; height: 500px; overflow: hidden; }
       #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
       #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
       canvas { display: block; position: absolute; left: 0; top: 0; z-index: 2; }
@@ -29,10 +29,11 @@
       <img id="mouse-pointer" alt="mouse-pointer"/>
     </div>
     <script>
-      const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":800,"height":100,"autoWidth":true,"autoHeight":false,"opacity":0.3,"tileImage":{"src":"https://blob.gifcities.org/gifcities/DMQTXVF6TEIIGPKUJJQJSVPTO2TEZA2E.gif","x":33,"y":244,"width":22,"height":120,"autoWidth":false,"autoHeight":false,"opacity":0.3}}];
-      const IMAGE_NODES = [{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":2222,"height":414,"autoWidth":false,"autoHeight":false,"opacity":0.7},{"src":"https://www.ephotozine.com/resize/articles/22672/I_See_You.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":423,"y":123,"width":300,"height":123,"autoWidth":true,"autoHeight":false,"opacity":1.0},{"src":"https://blob.gifcities.org/gifcities/DMQTXVF6TEIIGPKUJJQJSVPTO2TEZA2E.gif","x":0,"y":123,"width":100,"height":100,"autoWidth":false,"autoHeight":false,"opacity":1.0}];
+      const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":2100,"height":500,"autoWidth":false,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":1200,"height":1200,"autoWidth":false,"autoHeight":false,"opacity":1.0}}];
+      const IMAGE_NODES = [{"src":"https://www.ephotozine.com/resize/articles/22672/I_See_You.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":423,"y":123,"width":300,"height":123,"autoWidth":true,"autoHeight":false,"opacity":1.0},{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":0,"y":0,"width":2222,"height":414,"autoWidth":false,"autoHeight":false,"opacity":0.6}];
+      const PAGE_BACKGROUND_COLOR = "#3d3846";
       const MOUSE_POINTER_SRC = "https://blob.gifcities.org/gifcities/2CEGEQDTBN7R4YYOD436RPUZCQQHZVZO.gif";
-      const CANVAS_W = 800;
+      const CANVAS_W = 1800;
       const CANVAS_H = 500;
 
       const TILE_STYLE = "tile";
@@ -222,6 +223,15 @@
         noCursor();
       }
 
+      function applyPageBackgroundColor() {
+        const color = typeof PAGE_BACKGROUND_COLOR === "string" ? PAGE_BACKGROUND_COLOR.trim() : "";
+        if (!color) {
+          return;
+        }
+        document.documentElement.style.backgroundColor = color;
+        document.body.style.backgroundColor = color;
+      }
+
       function buildImageNodes() {
         imageLayerElement.innerHTML = "";
 
@@ -273,6 +283,7 @@
       function setup() {
         const canvas = createCanvas(CANVAS_W, CANVAS_H);
         canvas.parent(stageElement);
+        applyPageBackgroundColor();
         warmupResources();
         buildBackgroundNodes();
         buildImageNodes();

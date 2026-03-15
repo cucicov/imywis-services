@@ -31,6 +31,7 @@
     <script>
       const BACKGROUND_NODES = [{"cacheKey":"7","style":"tile","x":0,"y":0,"width":800,"height":500,"autoWidth":true,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://example.com/bg.gif","x":0,"y":0,"width":16,"height":16,"autoWidth":false,"autoHeight":false,"opacity":1.0}}];
       const IMAGE_NODES = [];
+      const PAGE_BACKGROUND_COLOR = "#cceeff";
       const MOUSE_POINTER_SRC = "";
       const CANVAS_W = 800;
       const CANVAS_H = 500;
@@ -222,6 +223,15 @@
         noCursor();
       }
 
+      function applyPageBackgroundColor() {
+        const color = typeof PAGE_BACKGROUND_COLOR === "string" ? PAGE_BACKGROUND_COLOR.trim() : "";
+        if (!color) {
+          return;
+        }
+        document.documentElement.style.backgroundColor = color;
+        document.body.style.backgroundColor = color;
+      }
+
       function buildImageNodes() {
         imageLayerElement.innerHTML = "";
 
@@ -273,6 +283,7 @@
       function setup() {
         const canvas = createCanvas(CANVAS_W, CANVAS_H);
         canvas.parent(stageElement);
+        applyPageBackgroundColor();
         warmupResources();
         buildBackgroundNodes();
         buildImageNodes();
