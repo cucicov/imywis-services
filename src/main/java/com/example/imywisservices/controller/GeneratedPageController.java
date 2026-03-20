@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -18,14 +19,18 @@ public class GeneratedPageController {
         this.graphHtmlService = graphHtmlService;
     }
 
-    @GetMapping(value = "/test", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getGeneratedPage() {
-        Path latest = graphHtmlService.getLastGeneratedFile();
-        if (latest == null || !Files.exists(latest)) {
+    @GetMapping(value = {"/test", "/test/{pageName:.+}"}, produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> getGeneratedPage(@PathVariable(name = "pageName", required = false) String pageName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir();
+        String targetName = (pageName == null || pageName.isBlank()) ? "index.html" : pageName;
+        Path requestedPath = generatedPagesDir.resolve(targetName).normalize();
+
+        // Prevent resolving files outside the generated pages directory.
+        if (!requestedPath.startsWith(generatedPagesDir.normalize()) || !Files.exists(requestedPath)) {
             return ResponseEntity.notFound().build();
         }
         try {
-            String html = Files.readString(latest, StandardCharsets.UTF_8);
+            String html = Files.readString(requestedPath, StandardCharsets.UTF_8);
             return ResponseEntity.ok(html);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();

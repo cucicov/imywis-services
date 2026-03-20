@@ -59,6 +59,10 @@ public class GraphHtmlService {
         return findMostRecentGeneratedFile();
     }
 
+    public Path getGeneratedPagesDir() {
+        return getOutputDir();
+    }
+
     private Path generatePage(NodeDTO pageNode) throws Exception {
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
