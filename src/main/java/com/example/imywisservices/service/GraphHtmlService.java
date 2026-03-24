@@ -9,9 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +28,7 @@ public class GraphHtmlService {
     private static final String IMAGE_NODE_TYPE = "imageNode";
     private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
     private static final String TEXT_NODE_TYPE = "textNode";
+    private static final String EVENT_NODE_TYPE = "eventNode";
     private static final String TILE_STYLE = "tile";
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
@@ -40,11 +43,13 @@ public class GraphHtmlService {
             throw new Exception("No nodes found in the graph");
         }
 
+        Set<String> availablePageNames = collectAvailablePageNames(graph.getNodes());
+
         for (NodeDTO node : graph.getNodes()) {
             if (node == null || !PAGE_NODE_TYPE.equals(node.getType())) {
                 continue;
             }
-            Path generated = generatePage(node);
+            Path generated = generatePage(node, availablePageNames);
             if (generated != null) {
                 lastGeneratedFile.set(generated);
             }
@@ -63,7 +68,7 @@ public class GraphHtmlService {
         return getOutputDir();
     }
 
-    private Path generatePage(NodeDTO pageNode) throws Exception {
+    private Path generatePage(NodeDTO pageNode, Set<String> availablePageNames) throws Exception {
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
             return null;
@@ -76,9 +81,9 @@ public class GraphHtmlService {
         Path outputDir = getOutputDir();
         Path outputFile = outputDir.resolve(fileName);
 
-        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight);
-        List<ImageNodePayload> images = extractImageNodes(data.getMetadata());
-        List<TextNodePayload> texts = extractTextNodes(data.getMetadata());
+        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, availablePageNames);
+        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), availablePageNames);
+        List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), availablePageNames);
 
         String html = buildHtml(
                 canvasWidth,
@@ -116,7 +121,7 @@ public class GraphHtmlService {
         }
     }
 
-    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata) {
+    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata, Set<String> availablePageNames) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -137,13 +142,17 @@ public class GraphHtmlService {
                     data.getHeight(),
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
-                    data.getOpacity() != null ? data.getOpacity() : 1.0
+                    data.getOpacity() != null ? data.getOpacity() : 1.0,
+                    extractClickTarget(data.getMetadata(), availablePageNames)
             ));
         }
         return images;
     }
 
-    private List<BackgroundNodePayload> extractBackgroundNodes(MetadataDTO metadata, int parentWidth, int parentHeight) {
+    private List<BackgroundNodePayload> extractBackgroundNodes(MetadataDTO metadata,
+                                                               int parentWidth,
+                                                               int parentHeight,
+                                                               Set<String> availablePageNames) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -165,6 +174,10 @@ public class GraphHtmlService {
             int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
             String style = data.getStyle() == null ? "" : data.getStyle().trim();
             ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
+            String clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            double backgroundOpacity = tileImage != null
+                    ? tileImage.getOpacity()
+                    : (data.getOpacity() != null ? data.getOpacity() : 1.0);
 
             backgrounds.add(new BackgroundNodePayload(
                     firstNonBlank(node.getNodeId(), node.getId(), "background-" + index),
@@ -175,8 +188,9 @@ public class GraphHtmlService {
                     height,
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
-                    tileImage.getOpacity(),
-                    TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null
+                    backgroundOpacity,
+                    TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null,
+                    clickTarget
             ));
 
             index++;
@@ -185,7 +199,7 @@ public class GraphHtmlService {
         return backgrounds;
     }
 
-    private List<TextNodePayload> extractTextNodes(MetadataDTO metadata) {
+    private List<TextNodePayload> extractTextNodes(MetadataDTO metadata, Set<String> availablePageNames) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -214,7 +228,8 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getItalic()),
                     Boolean.TRUE.equals(data.getUnderline()),
                     Boolean.TRUE.equals(data.getStrikethrough()),
-                    Boolean.TRUE.equals(data.getCaps())
+                    Boolean.TRUE.equals(data.getCaps()),
+                    extractClickTarget(data.getMetadata(), availablePageNames)
             ));
         }
 
@@ -244,7 +259,8 @@ public class GraphHtmlService {
                     data.getHeight(),
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
-                    data.getOpacity() != null ? data.getOpacity() : 1.0
+                    data.getOpacity() != null ? data.getOpacity() : 1.0,
+                    null
             );
         }
 
@@ -270,10 +286,10 @@ public class GraphHtmlService {
                     <style>
                       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
                       #stage { position: relative; width: __CANVAS_W__px; height: __CANVAS_H__px; overflow: hidden; }
-                      #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-                      #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-                      #text-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; }
+                      #background-layer { position: absolute; inset: 0; z-index: 0; }
+                      #image-layer { position: absolute; inset: 0; z-index: 1; }
+                      #text-layer { position: absolute; inset: 0; z-index: 2; }
+                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
                       #mouse-pointer {
                         position: absolute;
                         left: 0;
@@ -309,6 +325,157 @@ public class GraphHtmlService {
                       const imageLayerElement = document.getElementById("image-layer");
                       const textLayerElement = document.getElementById("text-layer");
                       const mousePointerElement = document.getElementById("mouse-pointer");
+                      const clickableBindings = [];
+                      let hasCustomMousePointer = false;
+
+                      function resolveClickTarget(node) {
+                        if (!node || typeof node.clickTarget !== "string") {
+                          return "";
+                        }
+                        return node.clickTarget.trim();
+                      }
+
+                      function bindClickRedirect(element, node) {
+                        const clickTarget = resolveClickTarget(node);
+                        if (!clickTarget) {
+                          element.style.pointerEvents = "none";
+                          element.style.cursor = "default";
+                          element.removeAttribute("data-click-target");
+                          return;
+                        }
+
+                        const targetUrl = resolveNavigationUrl(clickTarget);
+                        if (!targetUrl) {
+                          element.style.pointerEvents = "none";
+                          element.style.cursor = "default";
+                          element.removeAttribute("data-click-target");
+                          return;
+                        }
+
+                        element.style.pointerEvents = "auto";
+                        element.style.cursor = "pointer";
+                        element.setAttribute("data-click-target", targetUrl);
+                        clickableBindings.push({ element, targetUrl });
+                      }
+
+                      function resolveNavigationUrl(clickTarget) {
+                        if (!clickTarget) {
+                          return "";
+                        }
+
+                        const target = String(clickTarget).trim();
+                        if (!target) {
+                          return "";
+                        }
+
+                        if (target.startsWith("/") || /^https?:\\/\\//i.test(target)) {
+                          return target;
+                        }
+
+                        const pathName = window.location.pathname || "/";
+                        if (pathName.endsWith("/")) {
+                          return pathName + target;
+                        }
+
+                        const lastSlash = pathName.lastIndexOf("/");
+                        const lastSegment = lastSlash >= 0 ? pathName.slice(lastSlash + 1) : pathName;
+                        const looksLikeFile = lastSegment.includes(".");
+                        if (looksLikeFile && lastSlash >= 0) {
+                          return pathName.slice(0, lastSlash + 1) + target;
+                        }
+
+                        return pathName + "/" + target;
+                      }
+
+                      function handleStageClick(event) {
+                        const path = event.composedPath ? event.composedPath() : [];
+                        for (const item of path) {
+                          if (!item || !item.getAttribute) {
+                            continue;
+                          }
+                          const directTarget = item.getAttribute("data-click-target");
+                          if (directTarget) {
+                            window.location.href = directTarget;
+                            return;
+                          }
+                        }
+
+                        const clickX = event.clientX;
+                        const clickY = event.clientY;
+                        for (let i = clickableBindings.length - 1; i >= 0; i--) {
+                          const binding = clickableBindings[i];
+                          if (!binding || !binding.element || !binding.targetUrl) {
+                            continue;
+                          }
+                          const rect = binding.element.getBoundingClientRect();
+                          if (rect.width <= 0 || rect.height <= 0) {
+                            continue;
+                          }
+                          const inside = clickX >= rect.left
+                              && clickX <= rect.right
+                              && clickY >= rect.top
+                              && clickY <= rect.bottom;
+                          if (inside) {
+                            window.location.href = binding.targetUrl;
+                            return;
+                          }
+                        }
+                      }
+
+                      function updateStageCursor(event) {
+                        let isOverClickable = false;
+
+                        const path = event && event.composedPath ? event.composedPath() : [];
+                        for (const item of path) {
+                          if (!item || !item.getAttribute) {
+                            continue;
+                          }
+                          const directTarget = item.getAttribute("data-click-target");
+                          if (directTarget) {
+                            isOverClickable = true;
+                            break;
+                          }
+                        }
+
+                        if (!isOverClickable) {
+                          const moveX = event ? event.clientX : 0;
+                          const moveY = event ? event.clientY : 0;
+                          for (let i = clickableBindings.length - 1; i >= 0; i--) {
+                            const binding = clickableBindings[i];
+                            if (!binding || !binding.element || !binding.targetUrl) {
+                              continue;
+                            }
+                            const rect = binding.element.getBoundingClientRect();
+                            if (rect.width <= 0 || rect.height <= 0) {
+                              continue;
+                            }
+                            const inside = moveX >= rect.left
+                                && moveX <= rect.right
+                                && moveY >= rect.top
+                                && moveY <= rect.bottom;
+                            if (inside) {
+                              isOverClickable = true;
+                              break;
+                            }
+                          }
+                        }
+
+                        if (isOverClickable) {
+                          stageElement.style.cursor = "pointer";
+                          if (hasCustomMousePointer) {
+                            mousePointerElement.style.display = "none";
+                          }
+                          return;
+                        }
+
+                        if (hasCustomMousePointer) {
+                          stageElement.style.cursor = "none";
+                          mousePointerElement.style.display = "block";
+                        } else {
+                          stageElement.style.cursor = "default";
+                          mousePointerElement.style.display = "none";
+                        }
+                      }
 
                       function toProxyUrl(url) {
                         if (!url) return url;
@@ -436,6 +603,7 @@ public class GraphHtmlService {
                           wrapper.style.height = `${surface.height}px`;
                           wrapper.style.overflow = "hidden";
                           wrapper.style.opacity = String(clamp01(node.opacity));
+                          bindClickRedirect(wrapper, node);
 
                           if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileImage && node.tileImage.src) {
                             const tile = document.createElement("div");
@@ -473,21 +641,24 @@ public class GraphHtmlService {
 
                       function setupMousePointer() {
                         if (!MOUSE_POINTER_SRC) {
+                          hasCustomMousePointer = false;
                           mousePointerElement.style.display = "none";
-                          cursor();
+                          stageElement.style.cursor = "default";
                           return;
                         }
 
                         const src = String(MOUSE_POINTER_SRC).trim();
                         if (!src) {
+                          hasCustomMousePointer = false;
                           mousePointerElement.style.display = "none";
-                          cursor();
+                          stageElement.style.cursor = "default";
                           return;
                         }
 
+                        hasCustomMousePointer = true;
                         mousePointerElement.src = src;
                         mousePointerElement.style.display = "block";
-                        noCursor();
+                        stageElement.style.cursor = "none";
                       }
 
                       function applyPageBackgroundColor() {
@@ -513,8 +684,8 @@ public class GraphHtmlService {
                           imageElement.style.left = `${node.x}px`;
                           imageElement.style.top = `${node.y}px`;
                           imageElement.style.opacity = String(clamp01(node.opacity));
-                          imageElement.style.pointerEvents = "none";
                           imageElement.decoding = "async";
+                          bindClickRedirect(imageElement, node);
 
                           const applyImageSize = () => {
                             if (!resource.loaded || resource.errored) {
@@ -575,6 +746,7 @@ public class GraphHtmlService {
                           }
                           textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
                           textElement.textContent = node.text || "";
+                          bindClickRedirect(textElement, node);
                           textLayerElement.appendChild(textElement);
                         }
                       }
@@ -589,6 +761,17 @@ public class GraphHtmlService {
                       function setup() {
                         const canvas = createCanvas(CANVAS_W, CANVAS_H);
                         canvas.parent(stageElement);
+                        stageElement.addEventListener("click", handleStageClick, true);
+                        stageElement.addEventListener("mousemove", updateStageCursor, true);
+                        stageElement.addEventListener("mouseleave", () => {
+                          if (hasCustomMousePointer) {
+                            stageElement.style.cursor = "none";
+                            mousePointerElement.style.display = "block";
+                          } else {
+                            stageElement.style.cursor = "default";
+                            mousePointerElement.style.display = "none";
+                          }
+                        });
                         applyPageBackgroundColor();
                         warmupResources();
                         buildBackgroundNodes();
@@ -691,6 +874,77 @@ public class GraphHtmlService {
         return base;
     }
 
+    private Set<String> collectAvailablePageNames(List<NodeDTO> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        Set<String> pageNames = new HashSet<>();
+        for (NodeDTO node : nodes) {
+            if (node == null || !PAGE_NODE_TYPE.equals(node.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = node.getData();
+            if (data == null || data.getName() == null || data.getName().isBlank()) {
+                continue;
+            }
+
+            pageNames.add(normalizeFileName(data.getName()));
+        }
+
+        return pageNames;
+    }
+
+    private String extractClickTarget(MetadataDTO metadata, Set<String> availablePageNames) {
+        if (metadata == null || metadata.getSourceNodes() == null || availablePageNames == null || availablePageNames.isEmpty()) {
+            return null;
+        }
+
+        for (NodeDTO sourceNode : metadata.getSourceNodes()) {
+            if (sourceNode == null || !EVENT_NODE_TYPE.equals(sourceNode.getType())) {
+                continue;
+            }
+
+            NodeDataDTO eventData = sourceNode.getData();
+            if (eventData == null) {
+                continue;
+            }
+
+            if (eventData.getType() != null && !eventData.getType().isBlank() && !"click".equalsIgnoreCase(eventData.getType())) {
+                continue;
+            }
+
+            String targetPage = extractEventTargetPage(eventData);
+            if (targetPage != null && availablePageNames.contains(targetPage)) {
+                return targetPage;
+            }
+        }
+
+        return null;
+    }
+
+    private String extractEventTargetPage(NodeDataDTO eventData) {
+        if (eventData == null || eventData.getMetadata() == null || eventData.getMetadata().getSourceNodes() == null) {
+            return null;
+        }
+
+        for (NodeDTO metadataNode : eventData.getMetadata().getSourceNodes()) {
+            if (metadataNode == null || !PAGE_NODE_TYPE.equals(metadataNode.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = metadataNode.getData();
+            if (data == null || data.getName() == null || data.getName().isBlank()) {
+                continue;
+            }
+
+            return normalizeFileName(data.getName());
+        }
+
+        return null;
+    }
+
     private static class BackgroundNodePayload {
         public final String cacheKey;
         public final String style;
@@ -702,6 +956,7 @@ public class GraphHtmlService {
         public final boolean autoHeight;
         public final double opacity;
         public final ImageNodePayload tileImage;
+        public final String clickTarget;
 
         private BackgroundNodePayload(String cacheKey,
                                       String style,
@@ -712,7 +967,8 @@ public class GraphHtmlService {
                                       boolean autoWidth,
                                       boolean autoHeight,
                                       double opacity,
-                                      ImageNodePayload tileImage) {
+                                      ImageNodePayload tileImage,
+                                      String clickTarget) {
             this.cacheKey = Objects.requireNonNullElse(cacheKey, "");
             this.style = Objects.requireNonNullElse(style, "");
             this.x = x;
@@ -723,6 +979,7 @@ public class GraphHtmlService {
             this.autoHeight = autoHeight;
             this.opacity = opacity;
             this.tileImage = tileImage;
+            this.clickTarget = clickTarget;
         }
     }
 }

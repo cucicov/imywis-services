@@ -7,10 +7,10 @@
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
       #stage { position: relative; width: 800px; height: 600px; overflow: hidden; }
-      #background-layer { position: absolute; inset: 0; z-index: 0; }
-      #image-layer { position: absolute; inset: 0; z-index: 1; }
-      #text-layer { position: absolute; inset: 0; z-index: 2; }
-      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
+      #background-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+      #image-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+      #text-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; }
       #mouse-pointer {
         position: absolute;
         left: 0;
@@ -32,10 +32,10 @@
     </div>
     <script>
       const BACKGROUND_NODES = [];
-      const IMAGE_NODES = [{"src":"https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR","x":230,"y":0,"width":211,"height":100,"autoWidth":false,"autoHeight":true,"opacity":1.0,"clickTarget":"vasile.html"}];
+      const IMAGE_NODES = [];
       const TEXT_NODES = [];
-      const PAGE_BACKGROUND_COLOR = "#add5d5";
-      const MOUSE_POINTER_SRC = "https://blob.gifcities.org/gifcities/2CEGEQDTBN7R4YYOD436RPUZCQQHZVZO.gif";
+      const PAGE_BACKGROUND_COLOR = "#813d9c";
+      const MOUSE_POINTER_SRC = "";
       const CANVAS_W = 800;
       const CANVAS_H = 600;
 
@@ -46,157 +46,6 @@
       const imageLayerElement = document.getElementById("image-layer");
       const textLayerElement = document.getElementById("text-layer");
       const mousePointerElement = document.getElementById("mouse-pointer");
-      const clickableBindings = [];
-      let hasCustomMousePointer = false;
-
-      function resolveClickTarget(node) {
-        if (!node || typeof node.clickTarget !== "string") {
-          return "";
-        }
-        return node.clickTarget.trim();
-      }
-
-      function bindClickRedirect(element, node) {
-        const clickTarget = resolveClickTarget(node);
-        if (!clickTarget) {
-          element.style.pointerEvents = "none";
-          element.style.cursor = "default";
-          element.removeAttribute("data-click-target");
-          return;
-        }
-
-        const targetUrl = resolveNavigationUrl(clickTarget);
-        if (!targetUrl) {
-          element.style.pointerEvents = "none";
-          element.style.cursor = "default";
-          element.removeAttribute("data-click-target");
-          return;
-        }
-
-        element.style.pointerEvents = "auto";
-        element.style.cursor = "pointer";
-        element.setAttribute("data-click-target", targetUrl);
-        clickableBindings.push({ element, targetUrl });
-      }
-
-      function resolveNavigationUrl(clickTarget) {
-        if (!clickTarget) {
-          return "";
-        }
-
-        const target = String(clickTarget).trim();
-        if (!target) {
-          return "";
-        }
-
-        if (target.startsWith("/") || /^https?:\/\//i.test(target)) {
-          return target;
-        }
-
-        const pathName = window.location.pathname || "/";
-        if (pathName.endsWith("/")) {
-          return pathName + target;
-        }
-
-        const lastSlash = pathName.lastIndexOf("/");
-        const lastSegment = lastSlash >= 0 ? pathName.slice(lastSlash + 1) : pathName;
-        const looksLikeFile = lastSegment.includes(".");
-        if (looksLikeFile && lastSlash >= 0) {
-          return pathName.slice(0, lastSlash + 1) + target;
-        }
-
-        return pathName + "/" + target;
-      }
-
-      function handleStageClick(event) {
-        const path = event.composedPath ? event.composedPath() : [];
-        for (const item of path) {
-          if (!item || !item.getAttribute) {
-            continue;
-          }
-          const directTarget = item.getAttribute("data-click-target");
-          if (directTarget) {
-            window.location.href = directTarget;
-            return;
-          }
-        }
-
-        const clickX = event.clientX;
-        const clickY = event.clientY;
-        for (let i = clickableBindings.length - 1; i >= 0; i--) {
-          const binding = clickableBindings[i];
-          if (!binding || !binding.element || !binding.targetUrl) {
-            continue;
-          }
-          const rect = binding.element.getBoundingClientRect();
-          if (rect.width <= 0 || rect.height <= 0) {
-            continue;
-          }
-          const inside = clickX >= rect.left
-              && clickX <= rect.right
-              && clickY >= rect.top
-              && clickY <= rect.bottom;
-          if (inside) {
-            window.location.href = binding.targetUrl;
-            return;
-          }
-        }
-      }
-
-      function updateStageCursor(event) {
-        let isOverClickable = false;
-
-        const path = event && event.composedPath ? event.composedPath() : [];
-        for (const item of path) {
-          if (!item || !item.getAttribute) {
-            continue;
-          }
-          const directTarget = item.getAttribute("data-click-target");
-          if (directTarget) {
-            isOverClickable = true;
-            break;
-          }
-        }
-
-        if (!isOverClickable) {
-          const moveX = event ? event.clientX : 0;
-          const moveY = event ? event.clientY : 0;
-          for (let i = clickableBindings.length - 1; i >= 0; i--) {
-            const binding = clickableBindings[i];
-            if (!binding || !binding.element || !binding.targetUrl) {
-              continue;
-            }
-            const rect = binding.element.getBoundingClientRect();
-            if (rect.width <= 0 || rect.height <= 0) {
-              continue;
-            }
-            const inside = moveX >= rect.left
-                && moveX <= rect.right
-                && moveY >= rect.top
-                && moveY <= rect.bottom;
-            if (inside) {
-              isOverClickable = true;
-              break;
-            }
-          }
-        }
-
-        if (isOverClickable) {
-          stageElement.style.cursor = "pointer";
-          if (hasCustomMousePointer) {
-            mousePointerElement.style.display = "none";
-          }
-          return;
-        }
-
-        if (hasCustomMousePointer) {
-          stageElement.style.cursor = "none";
-          mousePointerElement.style.display = "block";
-        } else {
-          stageElement.style.cursor = "default";
-          mousePointerElement.style.display = "none";
-        }
-      }
 
       function toProxyUrl(url) {
         if (!url) return url;
@@ -324,7 +173,6 @@
           wrapper.style.height = `${surface.height}px`;
           wrapper.style.overflow = "hidden";
           wrapper.style.opacity = String(clamp01(node.opacity));
-          bindClickRedirect(wrapper, node);
 
           if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileImage && node.tileImage.src) {
             const tile = document.createElement("div");
@@ -362,24 +210,21 @@
 
       function setupMousePointer() {
         if (!MOUSE_POINTER_SRC) {
-          hasCustomMousePointer = false;
           mousePointerElement.style.display = "none";
-          stageElement.style.cursor = "default";
+          cursor();
           return;
         }
 
         const src = String(MOUSE_POINTER_SRC).trim();
         if (!src) {
-          hasCustomMousePointer = false;
           mousePointerElement.style.display = "none";
-          stageElement.style.cursor = "default";
+          cursor();
           return;
         }
 
-        hasCustomMousePointer = true;
         mousePointerElement.src = src;
         mousePointerElement.style.display = "block";
-        stageElement.style.cursor = "none";
+        noCursor();
       }
 
       function applyPageBackgroundColor() {
@@ -405,8 +250,8 @@
           imageElement.style.left = `${node.x}px`;
           imageElement.style.top = `${node.y}px`;
           imageElement.style.opacity = String(clamp01(node.opacity));
+          imageElement.style.pointerEvents = "none";
           imageElement.decoding = "async";
-          bindClickRedirect(imageElement, node);
 
           const applyImageSize = () => {
             if (!resource.loaded || resource.errored) {
@@ -467,7 +312,6 @@
           }
           textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
           textElement.textContent = node.text || "";
-          bindClickRedirect(textElement, node);
           textLayerElement.appendChild(textElement);
         }
       }
@@ -482,17 +326,6 @@
       function setup() {
         const canvas = createCanvas(CANVAS_W, CANVAS_H);
         canvas.parent(stageElement);
-        stageElement.addEventListener("click", handleStageClick, true);
-        stageElement.addEventListener("mousemove", updateStageCursor, true);
-        stageElement.addEventListener("mouseleave", () => {
-          if (hasCustomMousePointer) {
-            stageElement.style.cursor = "none";
-            mousePointerElement.style.display = "block";
-          } else {
-            stageElement.style.cursor = "default";
-            mousePointerElement.style.display = "none";
-          }
-        });
         applyPageBackgroundColor();
         warmupResources();
         buildBackgroundNodes();

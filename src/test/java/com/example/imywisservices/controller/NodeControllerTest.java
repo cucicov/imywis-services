@@ -345,4 +345,129 @@ public class NodeControllerTest {
                 "Generated HTML should apply text decorations for text nodes."
         );
     }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithEventNodeRedirectAndMissingTargetSafety() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "event-page",
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "3",
+                            "type": "imageNode",
+                            "data": {
+                              "path": "https://example.com/clickable.jpg",
+                              "positionX": 10,
+                              "positionY": 20,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "4",
+                                    "type": "eventNode",
+                                    "data": {
+                                      "type": "click",
+                                      "metadata": {
+                                        "sourceNodes": [
+                                          {
+                                            "nodeId": "2",
+                                            "type": "pageNode",
+                                            "data": {
+                                              "name": "target-page"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "nodeId": "5",
+                            "type": "imageNode",
+                            "data": {
+                              "path": "https://example.com/non-clickable.jpg",
+                              "positionX": 30,
+                              "positionY": 40,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "6",
+                                    "type": "eventNode",
+                                    "data": {
+                                      "type": "click"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "id": "2",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "target-page"
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(2));
+
+        Path generatedFile = Path.of("generated-pages", "event-page.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTarget\":\"target-page.html\""),
+                "Generated HTML should include click target for valid event node page metadata."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTarget\":null"),
+                "Generated HTML should keep click target null when event node has no valid page target."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("function handleStageClick(event) {"),
+                "Generated HTML should include stage click handler for reliable click redirects."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("window.location.href = binding.targetUrl;"),
+                "Generated HTML should redirect using click-hit detection when needed."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("stageElement.addEventListener(\"click\", handleStageClick, true);"),
+                "Generated HTML should bind stage capture click listener."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("function updateStageCursor(event) {"),
+                "Generated HTML should include cursor hover detection for clickable elements."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("stageElement.style.cursor = \"pointer\";"),
+                "Generated HTML should set pointer cursor over clickable areas."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }"),
+                "Generated HTML canvas should not intercept pointer events."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("function resolveNavigationUrl(clickTarget) {"),
+                "Generated HTML should include relative navigation resolution for /test and /test/{page} routes."
+        );
+    }
 }

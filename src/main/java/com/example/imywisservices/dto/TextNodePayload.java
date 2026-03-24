@@ -19,6 +19,7 @@ public class TextNodePayload {
     public final boolean underline;
     public final boolean strikethrough;
     public final boolean caps;
+    public final String clickTarget;
 
     public TextNodePayload(String text,
                            String font,
@@ -32,7 +33,8 @@ public class TextNodePayload {
                            boolean italic,
                            boolean underline,
                            boolean strikethrough,
-                           boolean caps) {
+                           boolean caps,
+                           String clickTarget) {
         this.text = Objects.requireNonNullElse(text, "");
         this.font = Objects.requireNonNullElse(font, "sans-serif");
         this.size = size;
@@ -46,5 +48,6 @@ public class TextNodePayload {
         this.underline = underline;
         this.strikethrough = strikethrough;
         this.caps = caps;
+        this.clickTarget = clickTarget;
     }
 }
