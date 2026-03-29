@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +47,9 @@ public class GraphHtmlService {
             throw new Exception("No nodes found in the graph");
         }
 
+        clearGeneratedPages();
+        lastGeneratedFile.set(null);
+
         Set<String> availablePageNames = collectAvailablePageNames(graph.getNodes());
 
         for (NodeDTO node : graph.getNodes()) {
@@ -56,6 +60,36 @@ public class GraphHtmlService {
             if (generated != null) {
                 lastGeneratedFile.set(generated);
             }
+        }
+    }
+
+    private void clearGeneratedPages() throws Exception {
+        Path outputDir = getOutputDir();
+        if (!Files.exists(outputDir)) {
+            return;
+        }
+
+        if (!Files.isDirectory(outputDir)) {
+            throw new Exception("Output path is not a directory: " + outputDir);
+        }
+
+        try (var stream = Files.list(outputDir)) {
+            stream
+                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".html"))
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to delete generated page: " + path, e);
+                        }
+                    });
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception ex) {
+                throw ex;
+            }
+            throw e;
         }
     }
 

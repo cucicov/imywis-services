@@ -419,6 +419,47 @@ public class NodeControllerTest {
 
     @Test
     @WithMockUser
+    public void testProcessNodesRemovesExistingGeneratedPagesBeforeWritingNewOnes() throws Exception {
+        Path outputDir = Path.of("generated-pages");
+        Files.createDirectories(outputDir);
+        Path staleFile = outputDir.resolve("stale-page.html");
+        Files.writeString(staleFile, "<html>stale</html>", StandardCharsets.UTF_8);
+
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "fresh-page",
+                      "width": 320,
+                      "height": 220
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1));
+
+        Path freshFile = outputDir.resolve("fresh-page.html");
+        org.junit.jupiter.api.Assertions.assertFalse(
+                Files.exists(staleFile),
+                "POST /api/nodes should remove previously generated HTML pages before writing new ones."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                Files.exists(freshFile),
+                "POST /api/nodes should write the newly generated page."
+        );
+    }
+
+    @Test
+    @WithMockUser
     public void testProcessNodesWithEventNodeRedirectAndMissingTargetSafety() throws Exception {
         String json = """
                 [
