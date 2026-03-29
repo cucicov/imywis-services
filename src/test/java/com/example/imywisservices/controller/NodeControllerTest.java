@@ -470,4 +470,135 @@ public class NodeControllerTest {
                 "Generated HTML should include relative navigation resolution for /test and /test/{page} routes."
         );
     }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithTextNodeClickRedirect() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "position": {
+                      "x": 481.78110199155026,
+                      "y": 1305.8163908004324
+                    },
+                    "data": {
+                      "label": "pageNode",
+                      "name": "index.html",
+                      "backgroundColor": "#ffbe6f",
+                      "width": "1234",
+                      "height": "1444",
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "4",
+                            "type": "textNode",
+                            "handleType": "red-output",
+                            "data": {
+                              "text": "Some text",
+                              "font": "sans-serif",
+                              "size": "33",
+                              "width": 250,
+                              "height": 120,
+                              "positionX": "333",
+                              "positionY": "333",
+                              "opacity": 1,
+                              "bold": false,
+                              "italic": false,
+                              "underline": false,
+                              "strikethrough": false,
+                              "caps": false,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "5",
+                                    "type": "eventNode",
+                                    "handleType": "turquoise-output",
+                                    "data": {
+                                      "type": "click",
+                                      "metadata": {
+                                        "sourceNodes": [
+                                          {
+                                            "nodeId": "2",
+                                            "type": "pageNode",
+                                            "handleType": "red-input",
+                                            "data": {
+                                              "label": "pageNode",
+                                              "name": "aaa",
+                                              "width": "1002",
+                                              "height": "1002",
+                                              "mousePointer": "",
+                                              "backgroundColor": "#ffffff"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "id": "2",
+                    "type": "pageNode",
+                    "position": {
+                      "x": 254.30841747974222,
+                      "y": 54.89792191938683
+                    },
+                    "data": {
+                      "label": "pageNode",
+                      "name": "aaa",
+                      "width": "1002",
+                      "height": "1002",
+                      "mousePointer": "",
+                      "backgroundColor": "#ffffff",
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "3",
+                            "type": "imageNode",
+                            "handleType": "red-output",
+                            "data": {
+                              "path": "https://www.ephotozine.com/resize/articles/22672/Lollycat.jpg?RTUdGk5cXyJFCgsJVANtdxU+cVRdHxFYFw1Gewk0T1JYFEtzen5YdgthHHsvEVxR",
+                              "width": 100,
+                              "height": 100,
+                              "autoWidth": true,
+                              "autoHeight": true,
+                              "positionX": "222",
+                              "positionY": "321",
+                              "opacity": 1
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(2));
+
+        Path generatedFile = Path.of("generated-pages", "index.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("const TEXT_NODES = [{\"text\":\"Some text\""),
+                "Generated HTML should include serialized text node payload."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTarget\":\"aaa.html\""),
+                "Generated HTML should include click target for text node event redirect metadata."
+        );
+    }
 }

@@ -6,7 +6,7 @@
     <title>Generated Page</title>
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
-      #stage { position: relative; width: 1234px; height: 1444px; overflow: hidden; }
+      #stage { position: relative; width: 1366px; height: 900px; overflow: hidden; }
       #background-layer { position: absolute; inset: 0; z-index: 0; }
       #image-layer { position: absolute; inset: 0; z-index: 1; }
       #text-layer { position: absolute; inset: 0; z-index: 2; }
@@ -31,13 +31,13 @@
       <img id="mouse-pointer" alt="mouse-pointer"/>
     </div>
     <script>
-      const BACKGROUND_NODES = [];
-      const IMAGE_NODES = [];
-      const TEXT_NODES = [{"text":"Some text","font":"sans-serif","size":33,"width":250,"height":120,"x":333,"y":333,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"aaa.html"}];
-      const PAGE_BACKGROUND_COLOR = "#ffbe6f";
-      const MOUSE_POINTER_SRC = "";
-      const CANVAS_W = 1234;
-      const CANVAS_H = 1444;
+      const BACKGROUND_NODES = [{"cacheKey":"12","style":"tile","x":0,"y":0,"width":1366,"height":900,"autoWidth":true,"autoHeight":true,"opacity":0.16,"tileImage":{"src":"https://upload.wikimedia.org/wikipedia/commons/1/17/Google-flutter-logo.png","x":0,"y":0,"width":120,"height":120,"autoWidth":true,"autoHeight":false,"opacity":0.16,"clickTarget":null},"clickTarget":null}];
+      const IMAGE_NODES = [{"src":"https://upload.wikimedia.org/wikipedia/commons/5/56/Tiger.50.jpg","x":360,"y":280,"width":620,"height":420,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null},{"src":"https://upload.wikimedia.org/wikipedia/commons/9/9a/Gull_portrait_ca_usa.jpg","x":980,"y":300,"width":420,"height":300,"autoWidth":false,"autoHeight":false,"opacity":0.88,"clickTarget":null},{"src":"https://upload.wikimedia.org/wikipedia/commons/f/f9/Phoenicopterus_ruber_in_S%C3%A3o_Paulo_Zoo.jpg","x":1120,"y":690,"width":210,"height":170,"autoWidth":false,"autoHeight":false,"opacity":0.72,"clickTarget":null}];
+      const TEXT_NODES = [];
+      const PAGE_BACKGROUND_COLOR = "#f5e9d7";
+      const MOUSE_POINTER_SRC = "https://blob.gifcities.org/gifcities/SE6R6M7M2S6H3QXRY7IN64NBD2E6SEYB.gif";
+      const CANVAS_W = 1366;
+      const CANVAS_H = 900;
 
       const TILE_STYLE = "tile";
       const imageCache = new Map();

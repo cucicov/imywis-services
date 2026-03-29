@@ -7,9 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -901,8 +904,20 @@ public class GraphHtmlService {
             return null;
         }
 
-        for (NodeDTO sourceNode : metadata.getSourceNodes()) {
-            if (sourceNode == null || !EVENT_NODE_TYPE.equals(sourceNode.getType())) {
+        Deque<NodeDTO> queue = new ArrayDeque<>(metadata.getSourceNodes());
+        Set<NodeDTO> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        while (!queue.isEmpty()) {
+            NodeDTO sourceNode = queue.removeFirst();
+            if (sourceNode == null || !visited.add(sourceNode)) {
+                continue;
+            }
+
+            if (!EVENT_NODE_TYPE.equals(sourceNode.getType())) {
+                MetadataDTO nestedMetadata = sourceNode.getData() != null ? sourceNode.getData().getMetadata() : null;
+                if (nestedMetadata != null && nestedMetadata.getSourceNodes() != null) {
+                    queue.addAll(nestedMetadata.getSourceNodes());
+                }
                 continue;
             }
 
@@ -911,13 +926,19 @@ public class GraphHtmlService {
                 continue;
             }
 
-            if (eventData.getType() != null && !eventData.getType().isBlank() && !"click".equalsIgnoreCase(eventData.getType())) {
+            String eventType = eventData.getType() == null ? "" : eventData.getType().trim();
+            if (!eventType.isEmpty() && !"click".equalsIgnoreCase(eventType)) {
                 continue;
             }
 
             String targetPage = extractEventTargetPage(eventData);
             if (targetPage != null && availablePageNames.contains(targetPage)) {
                 return targetPage;
+            }
+
+            MetadataDTO nestedMetadata = eventData.getMetadata();
+            if (nestedMetadata != null && nestedMetadata.getSourceNodes() != null) {
+                queue.addAll(nestedMetadata.getSourceNodes());
             }
         }
 
