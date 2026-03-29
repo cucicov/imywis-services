@@ -354,6 +354,24 @@
             }
 
             wrapper.appendChild(tile);
+          } else if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {
+            const tileContent = document.createElement("div");
+            tileContent.style.position = "absolute";
+            tileContent.style.inset = "0";
+            tileContent.style.overflow = "hidden";
+
+            const tileSize = resolveTextTileSize(node.tileText);
+            for (let y = 0; y < surface.height; y += tileSize.height) {
+              for (let x = 0; x < surface.width; x += tileSize.width) {
+                const textTile = document.createElement("div");
+                applyTextNodeStyles(textTile, node.tileText, tileSize.width, tileSize.height);
+                textTile.style.left = `${x}px`;
+                textTile.style.top = `${y}px`;
+                tileContent.appendChild(textTile);
+              }
+            }
+
+            wrapper.appendChild(tileContent);
           }
 
           backgroundLayerElement.appendChild(wrapper);
@@ -443,33 +461,50 @@
           }
 
           const textElement = document.createElement("div");
-          textElement.style.position = "absolute";
+          applyTextNodeStyles(textElement, node, width, height);
           textElement.style.left = `${Number(node.x) || 0}px`;
           textElement.style.top = `${Number(node.y) || 0}px`;
-          textElement.style.width = `${width}px`;
-          textElement.style.height = `${height}px`;
-          textElement.style.opacity = String(clamp01(node.opacity));
-          textElement.style.overflow = "hidden";
-          textElement.style.whiteSpace = "pre-wrap";
-          textElement.style.wordBreak = "break-word";
-          textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
-          textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
-          textElement.style.fontWeight = node.bold ? "700" : "400";
-          textElement.style.fontStyle = node.italic ? "italic" : "normal";
-          textElement.style.textTransform = node.caps ? "uppercase" : "none";
-
-          const decorations = [];
-          if (node.underline) {
-            decorations.push("underline");
-          }
-          if (node.strikethrough) {
-            decorations.push("line-through");
-          }
-          textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
-          textElement.textContent = node.text || "";
           bindClickRedirect(textElement, node);
           textLayerElement.appendChild(textElement);
         }
+      }
+
+      function resolveTextTileSize(textNode) {
+        const providedWidth = Math.max(0, Number(textNode.width) || 0);
+        const providedHeight = Math.max(0, Number(textNode.height) || 0);
+        const fontSize = Math.max(1, Number(textNode.size) || 16);
+        const textLength = Math.max(1, String(textNode.text || "").length);
+        const fallbackWidth = Math.ceil(fontSize * textLength * 0.6);
+        const fallbackHeight = Math.ceil(fontSize * 1.2);
+        return {
+          width: Math.max(1, providedWidth || fallbackWidth),
+          height: Math.max(1, providedHeight || fallbackHeight)
+        };
+      }
+
+      function applyTextNodeStyles(textElement, node, width, height) {
+        textElement.style.position = "absolute";
+        textElement.style.width = `${Math.max(0, Number(width) || 0)}px`;
+        textElement.style.height = `${Math.max(0, Number(height) || 0)}px`;
+        textElement.style.opacity = String(clamp01(node.opacity));
+        textElement.style.overflow = "hidden";
+        textElement.style.whiteSpace = "pre-wrap";
+        textElement.style.wordBreak = "break-word";
+        textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+        textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+        textElement.style.fontWeight = node.bold ? "700" : "400";
+        textElement.style.fontStyle = node.italic ? "italic" : "normal";
+        textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+        const decorations = [];
+        if (node.underline) {
+          decorations.push("underline");
+        }
+        if (node.strikethrough) {
+          decorations.push("line-through");
+        }
+        textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+        textElement.textContent = node.text || "";
       }
 
       function drawMousePointer() {

@@ -177,10 +177,13 @@ public class GraphHtmlService {
             int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
             String style = data.getStyle() == null ? "" : data.getStyle().trim();
             ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
+            TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), availablePageNames);
             String clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
             double backgroundOpacity = tileImage != null
                     ? tileImage.getOpacity()
-                    : (data.getOpacity() != null ? data.getOpacity() : 1.0);
+                    : (tileText != null
+                    ? tileText.getOpacity()
+                    : (data.getOpacity() != null ? data.getOpacity() : 1.0));
 
             backgrounds.add(new BackgroundNodePayload(
                     firstNonBlank(node.getNodeId(), node.getId(), "background-" + index),
@@ -193,6 +196,7 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     backgroundOpacity,
                     TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null,
+                    TILE_STYLE.equalsIgnoreCase(style) ? tileText : null,
                     clickTarget
             ));
 
@@ -264,6 +268,42 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     data.getOpacity() != null ? data.getOpacity() : 1.0,
                     null
+            );
+        }
+
+        return null;
+    }
+
+    private TextNodePayload extractFirstTextNode(MetadataDTO metadata, Set<String> availablePageNames) {
+        if (metadata == null || metadata.getSourceNodes() == null) {
+            return null;
+        }
+
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !TEXT_NODE_TYPE.equals(node.getType())) {
+                continue;
+            }
+
+            NodeDataDTO data = node.getData();
+            if (data == null || data.getText() == null || data.getText().isBlank()) {
+                continue;
+            }
+
+            return new TextNodePayload(
+                    data.getText(),
+                    firstNonBlank(data.getFont(), "sans-serif"),
+                    positiveIntOrDefault(data.getSize(), 16),
+                    positiveIntOrDefault(data.getWidth(), 0),
+                    positiveIntOrDefault(data.getHeight(), 0),
+                    defaultInt(data.getPositionX()),
+                    defaultInt(data.getPositionY()),
+                    data.getOpacity() != null ? data.getOpacity() : 1.0,
+                    Boolean.TRUE.equals(data.getBold()),
+                    Boolean.TRUE.equals(data.getItalic()),
+                    Boolean.TRUE.equals(data.getUnderline()),
+                    Boolean.TRUE.equals(data.getStrikethrough()),
+                    Boolean.TRUE.equals(data.getCaps()),
+                    extractClickTarget(data.getMetadata(), availablePageNames)
             );
         }
 
@@ -636,6 +676,24 @@ public class GraphHtmlService {
                             }
 
                             wrapper.appendChild(tile);
+                          } else if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {
+                            const tileContent = document.createElement("div");
+                            tileContent.style.position = "absolute";
+                            tileContent.style.inset = "0";
+                            tileContent.style.overflow = "hidden";
+
+                            const tileSize = resolveTextTileSize(node.tileText);
+                            for (let y = 0; y < surface.height; y += tileSize.height) {
+                              for (let x = 0; x < surface.width; x += tileSize.width) {
+                                const textTile = document.createElement("div");
+                                applyTextNodeStyles(textTile, node.tileText, tileSize.width, tileSize.height);
+                                textTile.style.left = `${x}px`;
+                                textTile.style.top = `${y}px`;
+                                tileContent.appendChild(textTile);
+                              }
+                            }
+
+                            wrapper.appendChild(tileContent);
                           }
 
                           backgroundLayerElement.appendChild(wrapper);
@@ -725,33 +783,50 @@ public class GraphHtmlService {
                           }
 
                           const textElement = document.createElement("div");
-                          textElement.style.position = "absolute";
+                          applyTextNodeStyles(textElement, node, width, height);
                           textElement.style.left = `${Number(node.x) || 0}px`;
                           textElement.style.top = `${Number(node.y) || 0}px`;
-                          textElement.style.width = `${width}px`;
-                          textElement.style.height = `${height}px`;
-                          textElement.style.opacity = String(clamp01(node.opacity));
-                          textElement.style.overflow = "hidden";
-                          textElement.style.whiteSpace = "pre-wrap";
-                          textElement.style.wordBreak = "break-word";
-                          textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
-                          textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
-                          textElement.style.fontWeight = node.bold ? "700" : "400";
-                          textElement.style.fontStyle = node.italic ? "italic" : "normal";
-                          textElement.style.textTransform = node.caps ? "uppercase" : "none";
-
-                          const decorations = [];
-                          if (node.underline) {
-                            decorations.push("underline");
-                          }
-                          if (node.strikethrough) {
-                            decorations.push("line-through");
-                          }
-                          textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
-                          textElement.textContent = node.text || "";
                           bindClickRedirect(textElement, node);
                           textLayerElement.appendChild(textElement);
                         }
+                      }
+
+                      function resolveTextTileSize(textNode) {
+                        const providedWidth = Math.max(0, Number(textNode.width) || 0);
+                        const providedHeight = Math.max(0, Number(textNode.height) || 0);
+                        const fontSize = Math.max(1, Number(textNode.size) || 16);
+                        const textLength = Math.max(1, String(textNode.text || "").length);
+                        const fallbackWidth = Math.ceil(fontSize * textLength * 0.6);
+                        const fallbackHeight = Math.ceil(fontSize * 1.2);
+                        return {
+                          width: Math.max(1, providedWidth || fallbackWidth),
+                          height: Math.max(1, providedHeight || fallbackHeight)
+                        };
+                      }
+
+                      function applyTextNodeStyles(textElement, node, width, height) {
+                        textElement.style.position = "absolute";
+                        textElement.style.width = `${Math.max(0, Number(width) || 0)}px`;
+                        textElement.style.height = `${Math.max(0, Number(height) || 0)}px`;
+                        textElement.style.opacity = String(clamp01(node.opacity));
+                        textElement.style.overflow = "hidden";
+                        textElement.style.whiteSpace = "pre-wrap";
+                        textElement.style.wordBreak = "break-word";
+                        textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+                        textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+                        textElement.style.fontWeight = node.bold ? "700" : "400";
+                        textElement.style.fontStyle = node.italic ? "italic" : "normal";
+                        textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+                        const decorations = [];
+                        if (node.underline) {
+                          decorations.push("underline");
+                        }
+                        if (node.strikethrough) {
+                          decorations.push("line-through");
+                        }
+                        textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+                        textElement.textContent = node.text || "";
                       }
 
                       function drawMousePointer() {
@@ -977,6 +1052,7 @@ public class GraphHtmlService {
         public final boolean autoHeight;
         public final double opacity;
         public final ImageNodePayload tileImage;
+        public final TextNodePayload tileText;
         public final String clickTarget;
 
         private BackgroundNodePayload(String cacheKey,
@@ -989,6 +1065,7 @@ public class GraphHtmlService {
                                       boolean autoHeight,
                                       double opacity,
                                       ImageNodePayload tileImage,
+                                      TextNodePayload tileText,
                                       String clickTarget) {
             this.cacheKey = Objects.requireNonNullElse(cacheKey, "");
             this.style = Objects.requireNonNullElse(style, "");
@@ -1000,6 +1077,7 @@ public class GraphHtmlService {
             this.autoHeight = autoHeight;
             this.opacity = opacity;
             this.tileImage = tileImage;
+            this.tileText = tileText;
             this.clickTarget = clickTarget;
         }
     }

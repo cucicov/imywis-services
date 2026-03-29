@@ -348,6 +348,77 @@ public class NodeControllerTest {
 
     @Test
     @WithMockUser
+    public void testProcessNodesWithBackgroundNodeUsingTextTile() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "background-text-tile",
+                      "width": 320,
+                      "height": 220,
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "7",
+                            "type": "backgroundNode",
+                            "data": {
+                              "style": "tile",
+                              "width": 140,
+                              "height": 80,
+                              "positionX": 20,
+                              "positionY": 30,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "8",
+                                    "type": "textNode",
+                                    "data": {
+                                      "text": "BG TXT",
+                                      "font": "sans-serif",
+                                      "size": 18,
+                                      "width": 70,
+                                      "height": 26,
+                                      "opacity": 0.7,
+                                      "bold": true
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].type").value("backgroundNode"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("textNode"));
+
+        Path generatedFile = Path.of("generated-pages", "background-text-tile.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"tileText\":{\"text\":\"BG TXT\""),
+                "Generated HTML should serialize text tile payload for background nodes."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("} else if ((node.style || \"\").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {"),
+                "Generated HTML should render tiled text backgrounds when background node source is a text node."
+        );
+    }
+
+    @Test
+    @WithMockUser
     public void testProcessNodesWithEventNodeRedirectAndMissingTargetSafety() throws Exception {
         String json = """
                 [
