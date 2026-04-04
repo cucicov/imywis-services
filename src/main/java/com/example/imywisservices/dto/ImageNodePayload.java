@@ -15,6 +15,7 @@ public class ImageNodePayload {
     public final boolean autoHeight;
     public final double opacity;
     public final String clickTarget;
+    public final String clickTargetWindow;
 
     public ImageNodePayload(String src,
                              int x,
@@ -24,7 +25,8 @@ public class ImageNodePayload {
                              boolean autoWidth,
                              boolean autoHeight,
                              double opacity,
-                             String clickTarget) {
+                             String clickTarget,
+                             String clickTargetWindow) {
         this.src = Objects.requireNonNull(src);
         this.x = x;
         this.y = y;
@@ -34,5 +36,6 @@ public class ImageNodePayload {
         this.autoHeight = autoHeight;
         this.opacity = opacity;
         this.clickTarget = clickTarget;
+        this.clickTargetWindow = clickTargetWindow;
     }
 }

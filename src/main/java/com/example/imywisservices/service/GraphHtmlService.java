@@ -34,6 +34,8 @@ public class GraphHtmlService {
     private static final String TEXT_NODE_TYPE = "textNode";
     private static final String EVENT_NODE_TYPE = "eventNode";
     private static final String EXTERNAL_LINK_NODE_TYPE = "externalLinkNode";
+    private static final String DEFAULT_CLICK_TARGET_WINDOW = "_self";
+    private static final String NEW_WINDOW_CLICK_TARGET = "_blank";
     private static final String TILE_STYLE = "tile";
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
@@ -172,6 +174,7 @@ public class GraphHtmlService {
             if (data == null || data.getPath() == null || data.getPath().isBlank()) {
                 continue;
             }
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
             images.add(new ImageNodePayload(
                     data.getPath(),
                     defaultInt(data.getPositionX()),
@@ -181,7 +184,8 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     data.getOpacity() != null ? data.getOpacity() : 1.0,
-                    extractClickTarget(data.getMetadata(), availablePageNames)
+                    clickTarget != null ? clickTarget.url() : null,
+                    clickTarget != null ? clickTarget.windowTarget() : null
             ));
         }
         return images;
@@ -213,7 +217,7 @@ public class GraphHtmlService {
             String style = data.getStyle() == null ? "" : data.getStyle().trim();
             ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
             TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), availablePageNames);
-            String clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
             double backgroundOpacity = tileImage != null
                     ? tileImage.getOpacity()
                     : (tileText != null
@@ -232,7 +236,8 @@ public class GraphHtmlService {
                     backgroundOpacity,
                     TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null,
                     TILE_STYLE.equalsIgnoreCase(style) ? tileText : null,
-                    clickTarget
+                    clickTarget != null ? clickTarget.url() : null,
+                    clickTarget != null ? clickTarget.windowTarget() : null
             ));
 
             index++;
@@ -257,6 +262,7 @@ public class GraphHtmlService {
                 continue;
             }
 
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
             texts.add(new TextNodePayload(
                     data.getText(),
                     data.getColor(),
@@ -275,7 +281,8 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getUnderline()),
                     Boolean.TRUE.equals(data.getStrikethrough()),
                     Boolean.TRUE.equals(data.getCaps()),
-                    extractClickTarget(data.getMetadata(), availablePageNames)
+                    clickTarget != null ? clickTarget.url() : null,
+                    clickTarget != null ? clickTarget.windowTarget() : null
             ));
         }
 
@@ -306,6 +313,7 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     data.getOpacity() != null ? data.getOpacity() : 1.0,
+                    null,
                     null
             );
         }
@@ -328,6 +336,7 @@ public class GraphHtmlService {
                 continue;
             }
 
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
             return new TextNodePayload(
                     data.getText(),
                     data.getColor(),
@@ -346,7 +355,8 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getUnderline()),
                     Boolean.TRUE.equals(data.getStrikethrough()),
                     Boolean.TRUE.equals(data.getCaps()),
-                    extractClickTarget(data.getMetadata(), availablePageNames)
+                    clickTarget != null ? clickTarget.url() : null,
+                    clickTarget != null ? clickTarget.windowTarget() : null
             );
         }
 
@@ -416,32 +426,41 @@ public class GraphHtmlService {
 
                       function resolveClickTarget(node) {
                         if (!node || typeof node.clickTarget !== "string") {
-                          return "";
+                          return null;
                         }
-                        return node.clickTarget.trim();
+                        const url = node.clickTarget.trim();
+                        if (!url) {
+                          return null;
+                        }
+                        const requestedWindow = typeof node.clickTargetWindow === "string" ? node.clickTargetWindow.trim() : "";
+                        const targetWindow = requestedWindow === "_blank" ? "_blank" : "_self";
+                        return { url, targetWindow };
                       }
 
                       function bindClickRedirect(element, node) {
-                        const clickTarget = resolveClickTarget(node);
-                        if (!clickTarget) {
+                        const clickBinding = resolveClickTarget(node);
+                        if (!clickBinding) {
                           element.style.pointerEvents = "none";
                           element.style.cursor = "default";
                           element.removeAttribute("data-click-target");
+                          element.removeAttribute("data-click-target-window");
                           return;
                         }
 
-                        const targetUrl = resolveNavigationUrl(clickTarget);
+                        const targetUrl = resolveNavigationUrl(clickBinding.url);
                         if (!targetUrl) {
                           element.style.pointerEvents = "none";
                           element.style.cursor = "default";
                           element.removeAttribute("data-click-target");
+                          element.removeAttribute("data-click-target-window");
                           return;
                         }
 
                         element.style.pointerEvents = "auto";
                         element.style.cursor = "pointer";
                         element.setAttribute("data-click-target", targetUrl);
-                        clickableBindings.push({ element, targetUrl });
+                        element.setAttribute("data-click-target-window", clickBinding.targetWindow);
+                        clickableBindings.push({ element, targetUrl, targetWindow: clickBinding.targetWindow });
                       }
 
                       function resolveNavigationUrl(clickTarget) {
@@ -492,7 +511,12 @@ public class GraphHtmlService {
                           }
                           const directTarget = item.getAttribute("data-click-target");
                           if (directTarget) {
-                            window.location.href = directTarget;
+                            const directTargetWindow = item.getAttribute("data-click-target-window");
+                            if (directTargetWindow === "_blank") {
+                              window.open(directTarget, "_blank", "noopener,noreferrer");
+                            } else {
+                              window.location.href = directTarget;
+                            }
                             return;
                           }
                         }
@@ -513,7 +537,11 @@ public class GraphHtmlService {
                               && clickY >= rect.top
                               && clickY <= rect.bottom;
                           if (inside) {
-                            window.location.href = binding.targetUrl;
+                            if (binding.targetWindow === "_blank") {
+                              window.open(binding.targetUrl, "_blank", "noopener,noreferrer");
+                            } else {
+                              window.location.href = binding.targetUrl;
+                            }
                             return;
                           }
                         }
@@ -1035,7 +1063,7 @@ public class GraphHtmlService {
         return pageNames;
     }
 
-    private String extractClickTarget(MetadataDTO metadata, Set<String> availablePageNames) {
+    private ClickTargetPayload extractClickTarget(MetadataDTO metadata, Set<String> availablePageNames) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
@@ -1067,7 +1095,7 @@ public class GraphHtmlService {
                 continue;
             }
 
-            String eventTarget = extractEventTarget(eventData, availablePageNames);
+            ClickTargetPayload eventTarget = extractEventTarget(eventData, availablePageNames);
             if (eventTarget != null) {
                 return eventTarget;
             }
@@ -1081,7 +1109,7 @@ public class GraphHtmlService {
         return null;
     }
 
-    private String extractEventTarget(NodeDataDTO eventData, Set<String> availablePageNames) {
+    private ClickTargetPayload extractEventTarget(NodeDataDTO eventData, Set<String> availablePageNames) {
         if (eventData == null || eventData.getMetadata() == null || eventData.getMetadata().getSourceNodes() == null) {
             return null;
         }
@@ -1099,7 +1127,7 @@ public class GraphHtmlService {
 
                 String targetPage = normalizeFileName(data.getName());
                 if (availablePageNames != null && availablePageNames.contains(targetPage)) {
-                    return targetPage;
+                    return new ClickTargetPayload(targetPage, DEFAULT_CLICK_TARGET_WINDOW);
                 }
                 continue;
             }
@@ -1113,10 +1141,21 @@ public class GraphHtmlService {
                 continue;
             }
 
-            return data.getUrl().trim();
+            return new ClickTargetPayload(data.getUrl().trim(), normalizeClickTargetWindow(data.getTarget()));
         }
 
         return null;
+    }
+
+    private String normalizeClickTargetWindow(String requestedWindow) {
+        String normalized = requestedWindow == null ? "" : requestedWindow.trim();
+        if (NEW_WINDOW_CLICK_TARGET.equalsIgnoreCase(normalized)) {
+            return NEW_WINDOW_CLICK_TARGET;
+        }
+        return DEFAULT_CLICK_TARGET_WINDOW;
+    }
+
+    private record ClickTargetPayload(String url, String windowTarget) {
     }
 
     private static class BackgroundNodePayload {
@@ -1132,6 +1171,7 @@ public class GraphHtmlService {
         public final ImageNodePayload tileImage;
         public final TextNodePayload tileText;
         public final String clickTarget;
+        public final String clickTargetWindow;
 
         private BackgroundNodePayload(String cacheKey,
                                       String style,
@@ -1144,7 +1184,8 @@ public class GraphHtmlService {
                                       double opacity,
                                       ImageNodePayload tileImage,
                                       TextNodePayload tileText,
-                                      String clickTarget) {
+                                      String clickTarget,
+                                      String clickTargetWindow) {
             this.cacheKey = Objects.requireNonNullElse(cacheKey, "");
             this.style = Objects.requireNonNullElse(style, "");
             this.x = x;
@@ -1157,6 +1198,7 @@ public class GraphHtmlService {
             this.tileImage = tileImage;
             this.tileText = tileText;
             this.clickTarget = clickTarget;
+            this.clickTargetWindow = clickTargetWindow;
         }
     }
 }

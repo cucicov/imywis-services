@@ -24,6 +24,7 @@ public class TextNodePayload {
     public final boolean strikethrough;
     public final boolean caps;
     public final String clickTarget;
+    public final String clickTargetWindow;
 
     public TextNodePayload(String text,
                            String color,
@@ -42,7 +43,8 @@ public class TextNodePayload {
                            boolean underline,
                            boolean strikethrough,
                            boolean caps,
-                           String clickTarget) {
+                           String clickTarget,
+                           String clickTargetWindow) {
         this.text = Objects.requireNonNullElse(text, "");
         this.color = color;
         this.align = align;
@@ -61,5 +63,6 @@ public class TextNodePayload {
         this.strikethrough = strikethrough;
         this.caps = caps;
         this.clickTarget = clickTarget;
+        this.clickTargetWindow = clickTargetWindow;
     }
 }

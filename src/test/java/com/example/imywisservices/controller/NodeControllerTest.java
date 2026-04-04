@@ -541,7 +541,8 @@ public class NodeControllerTest {
                                             "nodeId": "9",
                                             "type": "externalLinkNode",
                                             "data": {
-                                              "url": "https://example.org/landing"
+                                              "url": "https://example.org/landing",
+                                              "target": "_blank"
                                             }
                                           }
                                         ]
@@ -585,6 +586,10 @@ public class NodeControllerTest {
                 "Generated HTML should include click target for click event metadata external link nodes."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTargetWindow\":\"_blank\""),
+                "Generated HTML should include click target window for click event metadata external link nodes."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("\"clickTarget\":null"),
                 "Generated HTML should keep click target null when event node has no valid page target."
         );
@@ -595,6 +600,10 @@ public class NodeControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("window.location.href = binding.targetUrl;"),
                 "Generated HTML should redirect using click-hit detection when needed."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("window.open(binding.targetUrl, \"_blank\", \"noopener,noreferrer\");"),
+                "Generated HTML should open _blank click targets in a new tab."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("stageElement.addEventListener(\"click\", handleStageClick, true);"),
