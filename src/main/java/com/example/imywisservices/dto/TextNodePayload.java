@@ -25,6 +25,9 @@ public class TextNodePayload {
     public final boolean caps;
     public final String clickTarget;
     public final String clickTargetWindow;
+    public final boolean clickTargetPopup;
+    public final Integer clickTargetPopupWidth;
+    public final Integer clickTargetPopupHeight;
 
     public TextNodePayload(String text,
                            String color,
@@ -44,7 +47,10 @@ public class TextNodePayload {
                            boolean strikethrough,
                            boolean caps,
                            String clickTarget,
-                           String clickTargetWindow) {
+                           String clickTargetWindow,
+                           boolean clickTargetPopup,
+                           Integer clickTargetPopupWidth,
+                           Integer clickTargetPopupHeight) {
         this.text = Objects.requireNonNullElse(text, "");
         this.color = color;
         this.align = align;
@@ -64,5 +70,8 @@ public class TextNodePayload {
         this.caps = caps;
         this.clickTarget = clickTarget;
         this.clickTargetWindow = clickTargetWindow;
+        this.clickTargetPopup = clickTargetPopup;
+        this.clickTargetPopupWidth = clickTargetPopupWidth;
+        this.clickTargetPopupHeight = clickTargetPopupHeight;
     }
 }

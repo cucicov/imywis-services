@@ -561,7 +561,10 @@ public class NodeControllerTest {
                     "id": "2",
                     "type": "pageNode",
                     "data": {
-                      "name": "target-page"
+                      "name": "target-page",
+                      "width": 777,
+                      "height": 555,
+                      "popUp": true
                     }
                   }
                 ]
@@ -590,6 +593,18 @@ public class NodeControllerTest {
                 "Generated HTML should include click target window for click event metadata external link nodes."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTargetPopup\":true"),
+                "Generated HTML should include click target popup flag for page nodes configured as popup."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTargetPopupWidth\":777"),
+                "Generated HTML should include popup width from page node dimensions."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTargetPopupHeight\":555"),
+                "Generated HTML should include popup height from page node dimensions."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("\"clickTarget\":null"),
                 "Generated HTML should keep click target null when event node has no valid page target."
         );
@@ -598,12 +613,24 @@ public class NodeControllerTest {
                 "Generated HTML should include stage click handler for reliable click redirects."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("window.location.href = binding.targetUrl;"),
-                "Generated HTML should redirect using click-hit detection when needed."
+                generatedHtml.contains("navigateToTarget("),
+                "Generated HTML should route click redirects through navigation helper."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("window.open(binding.targetUrl, \"_blank\", \"noopener,noreferrer\");"),
+                generatedHtml.contains("window.open(targetUrl, \"_blank\", \"noopener,noreferrer\");"),
                 "Generated HTML should open _blank click targets in a new tab."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("function openPopupWindow(targetUrl, popupWidth, popupHeight) {"),
+                "Generated HTML should include popup window helper."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("popupFeatures.push(`width=${Math.round(popupWidth)}`);"),
+                "Generated HTML should use popup width for popup page targets."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("popupFeatures.push(`height=${Math.round(popupHeight)}`);"),
+                "Generated HTML should use popup height for popup page targets."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("stageElement.addEventListener(\"click\", handleStageClick, true);"),

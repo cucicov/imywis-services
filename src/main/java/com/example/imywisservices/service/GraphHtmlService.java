@@ -12,10 +12,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -53,13 +55,13 @@ public class GraphHtmlService {
         clearGeneratedPages();
         lastGeneratedFile.set(null);
 
-        Set<String> availablePageNames = collectAvailablePageNames(graph.getNodes());
+        Map<String, PageTargetConfig> pageTargetConfigs = collectPageTargetConfigs(graph.getNodes());
 
         for (NodeDTO node : graph.getNodes()) {
             if (node == null || !PAGE_NODE_TYPE.equals(node.getType())) {
                 continue;
             }
-            Path generated = generatePage(node, availablePageNames);
+            Path generated = generatePage(node, pageTargetConfigs);
             if (generated != null) {
                 lastGeneratedFile.set(generated);
             }
@@ -108,7 +110,7 @@ public class GraphHtmlService {
         return getOutputDir();
     }
 
-    private Path generatePage(NodeDTO pageNode, Set<String> availablePageNames) throws Exception {
+    private Path generatePage(NodeDTO pageNode, Map<String, PageTargetConfig> pageTargetConfigs) throws Exception {
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
             return null;
@@ -121,9 +123,9 @@ public class GraphHtmlService {
         Path outputDir = getOutputDir();
         Path outputFile = outputDir.resolve(fileName);
 
-        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, availablePageNames);
-        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), availablePageNames);
-        List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), availablePageNames);
+        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs);
+        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs);
+        List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
 
         String html = buildHtml(
                 canvasWidth,
@@ -161,7 +163,7 @@ public class GraphHtmlService {
         }
     }
 
-    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata, Set<String> availablePageNames) {
+    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata, Map<String, PageTargetConfig> pageTargetConfigs) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -174,7 +176,7 @@ public class GraphHtmlService {
             if (data == null || data.getPath() == null || data.getPath().isBlank()) {
                 continue;
             }
-            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             images.add(new ImageNodePayload(
                     data.getPath(),
                     defaultInt(data.getPositionX()),
@@ -185,7 +187,10 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     data.getOpacity() != null ? data.getOpacity() : 1.0,
                     clickTarget != null ? clickTarget.url() : null,
-                    clickTarget != null ? clickTarget.windowTarget() : null
+                    clickTarget != null ? clickTarget.windowTarget() : null,
+                    clickTarget != null && clickTarget.popup(),
+                    clickTarget != null ? clickTarget.popupWidth() : null,
+                    clickTarget != null ? clickTarget.popupHeight() : null
             ));
         }
         return images;
@@ -194,7 +199,7 @@ public class GraphHtmlService {
     private List<BackgroundNodePayload> extractBackgroundNodes(MetadataDTO metadata,
                                                                int parentWidth,
                                                                int parentHeight,
-                                                               Set<String> availablePageNames) {
+                                                               Map<String, PageTargetConfig> pageTargetConfigs) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -216,8 +221,8 @@ public class GraphHtmlService {
             int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
             String style = data.getStyle() == null ? "" : data.getStyle().trim();
             ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
-            TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), availablePageNames);
-            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), pageTargetConfigs);
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             double backgroundOpacity = tileImage != null
                     ? tileImage.getOpacity()
                     : (tileText != null
@@ -237,7 +242,10 @@ public class GraphHtmlService {
                     TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null,
                     TILE_STYLE.equalsIgnoreCase(style) ? tileText : null,
                     clickTarget != null ? clickTarget.url() : null,
-                    clickTarget != null ? clickTarget.windowTarget() : null
+                    clickTarget != null ? clickTarget.windowTarget() : null,
+                    clickTarget != null && clickTarget.popup(),
+                    clickTarget != null ? clickTarget.popupWidth() : null,
+                    clickTarget != null ? clickTarget.popupHeight() : null
             ));
 
             index++;
@@ -246,7 +254,7 @@ public class GraphHtmlService {
         return backgrounds;
     }
 
-    private List<TextNodePayload> extractTextNodes(MetadataDTO metadata, Set<String> availablePageNames) {
+    private List<TextNodePayload> extractTextNodes(MetadataDTO metadata, Map<String, PageTargetConfig> pageTargetConfigs) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -262,7 +270,7 @@ public class GraphHtmlService {
                 continue;
             }
 
-            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             texts.add(new TextNodePayload(
                     data.getText(),
                     data.getColor(),
@@ -282,7 +290,10 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getStrikethrough()),
                     Boolean.TRUE.equals(data.getCaps()),
                     clickTarget != null ? clickTarget.url() : null,
-                    clickTarget != null ? clickTarget.windowTarget() : null
+                    clickTarget != null ? clickTarget.windowTarget() : null,
+                    clickTarget != null && clickTarget.popup(),
+                    clickTarget != null ? clickTarget.popupWidth() : null,
+                    clickTarget != null ? clickTarget.popupHeight() : null
             ));
         }
 
@@ -314,6 +325,9 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     data.getOpacity() != null ? data.getOpacity() : 1.0,
                     null,
+                    null,
+                    false,
+                    null,
                     null
             );
         }
@@ -321,7 +335,7 @@ public class GraphHtmlService {
         return null;
     }
 
-    private TextNodePayload extractFirstTextNode(MetadataDTO metadata, Set<String> availablePageNames) {
+    private TextNodePayload extractFirstTextNode(MetadataDTO metadata, Map<String, PageTargetConfig> pageTargetConfigs) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
@@ -336,7 +350,7 @@ public class GraphHtmlService {
                 continue;
             }
 
-            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), availablePageNames);
+            ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             return new TextNodePayload(
                     data.getText(),
                     data.getColor(),
@@ -356,7 +370,10 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getStrikethrough()),
                     Boolean.TRUE.equals(data.getCaps()),
                     clickTarget != null ? clickTarget.url() : null,
-                    clickTarget != null ? clickTarget.windowTarget() : null
+                    clickTarget != null ? clickTarget.windowTarget() : null,
+                    clickTarget != null && clickTarget.popup(),
+                    clickTarget != null ? clickTarget.popupWidth() : null,
+                    clickTarget != null ? clickTarget.popupHeight() : null
             );
         }
 
@@ -434,7 +451,10 @@ public class GraphHtmlService {
                         }
                         const requestedWindow = typeof node.clickTargetWindow === "string" ? node.clickTargetWindow.trim() : "";
                         const targetWindow = requestedWindow === "_blank" ? "_blank" : "_self";
-                        return { url, targetWindow };
+                        const popup = Boolean(node.clickTargetPopup);
+                        const popupWidth = Math.max(0, Number(node.clickTargetPopupWidth) || 0);
+                        const popupHeight = Math.max(0, Number(node.clickTargetPopupHeight) || 0);
+                        return { url, targetWindow, popup, popupWidth, popupHeight };
                       }
 
                       function bindClickRedirect(element, node) {
@@ -444,6 +464,9 @@ public class GraphHtmlService {
                           element.style.cursor = "default";
                           element.removeAttribute("data-click-target");
                           element.removeAttribute("data-click-target-window");
+                          element.removeAttribute("data-click-target-popup");
+                          element.removeAttribute("data-click-target-popup-width");
+                          element.removeAttribute("data-click-target-popup-height");
                           return;
                         }
 
@@ -453,6 +476,9 @@ public class GraphHtmlService {
                           element.style.cursor = "default";
                           element.removeAttribute("data-click-target");
                           element.removeAttribute("data-click-target-window");
+                          element.removeAttribute("data-click-target-popup");
+                          element.removeAttribute("data-click-target-popup-width");
+                          element.removeAttribute("data-click-target-popup-height");
                           return;
                         }
 
@@ -460,7 +486,48 @@ public class GraphHtmlService {
                         element.style.cursor = "pointer";
                         element.setAttribute("data-click-target", targetUrl);
                         element.setAttribute("data-click-target-window", clickBinding.targetWindow);
-                        clickableBindings.push({ element, targetUrl, targetWindow: clickBinding.targetWindow });
+                        element.setAttribute("data-click-target-popup", clickBinding.popup ? "true" : "false");
+                        if (clickBinding.popupWidth > 0) {
+                          element.setAttribute("data-click-target-popup-width", String(clickBinding.popupWidth));
+                        } else {
+                          element.removeAttribute("data-click-target-popup-width");
+                        }
+                        if (clickBinding.popupHeight > 0) {
+                          element.setAttribute("data-click-target-popup-height", String(clickBinding.popupHeight));
+                        } else {
+                          element.removeAttribute("data-click-target-popup-height");
+                        }
+                        clickableBindings.push({
+                          element,
+                          targetUrl,
+                          targetWindow: clickBinding.targetWindow,
+                          popup: clickBinding.popup,
+                          popupWidth: clickBinding.popupWidth,
+                          popupHeight: clickBinding.popupHeight
+                        });
+                      }
+
+                      function openPopupWindow(targetUrl, popupWidth, popupHeight) {
+                        const popupFeatures = ["popup=yes", "noopener", "noreferrer"];
+                        if (popupWidth > 0) {
+                          popupFeatures.push(`width=${Math.round(popupWidth)}`);
+                        }
+                        if (popupHeight > 0) {
+                          popupFeatures.push(`height=${Math.round(popupHeight)}`);
+                        }
+                        return window.open(targetUrl, "_blank", popupFeatures.join(","));
+                      }
+
+                      function navigateToTarget(targetUrl, targetWindow, popup, popupWidth, popupHeight) {
+                        if (popup) {
+                          openPopupWindow(targetUrl, popupWidth, popupHeight);
+                          return;
+                        }
+                        if (targetWindow === "_blank") {
+                          window.open(targetUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                          window.location.href = targetUrl;
+                        }
                       }
 
                       function resolveNavigationUrl(clickTarget) {
@@ -512,11 +579,10 @@ public class GraphHtmlService {
                           const directTarget = item.getAttribute("data-click-target");
                           if (directTarget) {
                             const directTargetWindow = item.getAttribute("data-click-target-window");
-                            if (directTargetWindow === "_blank") {
-                              window.open(directTarget, "_blank", "noopener,noreferrer");
-                            } else {
-                              window.location.href = directTarget;
-                            }
+                            const directTargetPopup = item.getAttribute("data-click-target-popup") === "true";
+                            const directTargetPopupWidth = Math.max(0, Number(item.getAttribute("data-click-target-popup-width")) || 0);
+                            const directTargetPopupHeight = Math.max(0, Number(item.getAttribute("data-click-target-popup-height")) || 0);
+                            navigateToTarget(directTarget, directTargetWindow, directTargetPopup, directTargetPopupWidth, directTargetPopupHeight);
                             return;
                           }
                         }
@@ -537,11 +603,13 @@ public class GraphHtmlService {
                               && clickY >= rect.top
                               && clickY <= rect.bottom;
                           if (inside) {
-                            if (binding.targetWindow === "_blank") {
-                              window.open(binding.targetUrl, "_blank", "noopener,noreferrer");
-                            } else {
-                              window.location.href = binding.targetUrl;
-                            }
+                            navigateToTarget(
+                                binding.targetUrl,
+                                binding.targetWindow,
+                                Boolean(binding.popup),
+                                Math.max(0, Number(binding.popupWidth) || 0),
+                                Math.max(0, Number(binding.popupHeight) || 0)
+                            );
                             return;
                           }
                         }
@@ -1041,12 +1109,12 @@ public class GraphHtmlService {
         return base;
     }
 
-    private Set<String> collectAvailablePageNames(List<NodeDTO> nodes) {
+    private Map<String, PageTargetConfig> collectPageTargetConfigs(List<NodeDTO> nodes) {
         if (nodes == null || nodes.isEmpty()) {
-            return Collections.emptySet();
+            return Collections.emptyMap();
         }
 
-        Set<String> pageNames = new HashSet<>();
+        Map<String, PageTargetConfig> pageConfigs = new HashMap<>();
         for (NodeDTO node : nodes) {
             if (node == null || !PAGE_NODE_TYPE.equals(node.getType())) {
                 continue;
@@ -1057,13 +1125,17 @@ public class GraphHtmlService {
                 continue;
             }
 
-            pageNames.add(normalizeFileName(data.getName()));
+            String targetPage = normalizeFileName(data.getName());
+            int width = positiveIntOrDefault(data.getWidth(), DEFAULT_CANVAS_WIDTH);
+            int height = positiveIntOrDefault(data.getHeight(), DEFAULT_CANVAS_HEIGHT);
+            boolean popup = Boolean.TRUE.equals(data.getPopUp());
+            pageConfigs.put(targetPage, new PageTargetConfig(popup, width, height));
         }
 
-        return pageNames;
+        return pageConfigs;
     }
 
-    private ClickTargetPayload extractClickTarget(MetadataDTO metadata, Set<String> availablePageNames) {
+    private ClickTargetPayload extractClickTarget(MetadataDTO metadata, Map<String, PageTargetConfig> pageTargetConfigs) {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
@@ -1095,7 +1167,7 @@ public class GraphHtmlService {
                 continue;
             }
 
-            ClickTargetPayload eventTarget = extractEventTarget(eventData, availablePageNames);
+            ClickTargetPayload eventTarget = extractEventTarget(eventData, pageTargetConfigs);
             if (eventTarget != null) {
                 return eventTarget;
             }
@@ -1109,7 +1181,7 @@ public class GraphHtmlService {
         return null;
     }
 
-    private ClickTargetPayload extractEventTarget(NodeDataDTO eventData, Set<String> availablePageNames) {
+    private ClickTargetPayload extractEventTarget(NodeDataDTO eventData, Map<String, PageTargetConfig> pageTargetConfigs) {
         if (eventData == null || eventData.getMetadata() == null || eventData.getMetadata().getSourceNodes() == null) {
             return null;
         }
@@ -1126,8 +1198,15 @@ public class GraphHtmlService {
                 }
 
                 String targetPage = normalizeFileName(data.getName());
-                if (availablePageNames != null && availablePageNames.contains(targetPage)) {
-                    return new ClickTargetPayload(targetPage, DEFAULT_CLICK_TARGET_WINDOW);
+                PageTargetConfig pageConfig = pageTargetConfigs != null ? pageTargetConfigs.get(targetPage) : null;
+                if (pageConfig != null) {
+                    return new ClickTargetPayload(
+                            targetPage,
+                            DEFAULT_CLICK_TARGET_WINDOW,
+                            pageConfig.popup(),
+                            pageConfig.width(),
+                            pageConfig.height()
+                    );
                 }
                 continue;
             }
@@ -1141,7 +1220,13 @@ public class GraphHtmlService {
                 continue;
             }
 
-            return new ClickTargetPayload(data.getUrl().trim(), normalizeClickTargetWindow(data.getTarget()));
+            return new ClickTargetPayload(
+                    data.getUrl().trim(),
+                    normalizeClickTargetWindow(data.getTarget()),
+                    false,
+                    null,
+                    null
+            );
         }
 
         return null;
@@ -1155,7 +1240,14 @@ public class GraphHtmlService {
         return DEFAULT_CLICK_TARGET_WINDOW;
     }
 
-    private record ClickTargetPayload(String url, String windowTarget) {
+    private record ClickTargetPayload(String url,
+                                      String windowTarget,
+                                      boolean popup,
+                                      Integer popupWidth,
+                                      Integer popupHeight) {
+    }
+
+    private record PageTargetConfig(boolean popup, int width, int height) {
     }
 
     private static class BackgroundNodePayload {
@@ -1172,6 +1264,9 @@ public class GraphHtmlService {
         public final TextNodePayload tileText;
         public final String clickTarget;
         public final String clickTargetWindow;
+        public final boolean clickTargetPopup;
+        public final Integer clickTargetPopupWidth;
+        public final Integer clickTargetPopupHeight;
 
         private BackgroundNodePayload(String cacheKey,
                                       String style,
@@ -1185,7 +1280,10 @@ public class GraphHtmlService {
                                       ImageNodePayload tileImage,
                                       TextNodePayload tileText,
                                       String clickTarget,
-                                      String clickTargetWindow) {
+                                      String clickTargetWindow,
+                                      boolean clickTargetPopup,
+                                      Integer clickTargetPopupWidth,
+                                      Integer clickTargetPopupHeight) {
             this.cacheKey = Objects.requireNonNullElse(cacheKey, "");
             this.style = Objects.requireNonNullElse(style, "");
             this.x = x;
@@ -1199,6 +1297,9 @@ public class GraphHtmlService {
             this.tileText = tileText;
             this.clickTarget = clickTarget;
             this.clickTargetWindow = clickTargetWindow;
+            this.clickTargetPopup = clickTargetPopup;
+            this.clickTargetPopupWidth = clickTargetPopupWidth;
+            this.clickTargetPopupHeight = clickTargetPopupHeight;
         }
     }
 }
