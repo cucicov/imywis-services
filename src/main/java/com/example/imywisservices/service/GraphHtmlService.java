@@ -258,6 +258,10 @@ public class GraphHtmlService {
 
             texts.add(new TextNodePayload(
                     data.getText(),
+                    data.getColor(),
+                    data.getAlign(),
+                    data.getBackgroundColor(),
+                    !Boolean.FALSE.equals(data.getTransparentBackground()),
                     firstNonBlank(data.getFont(), "sans-serif"),
                     positiveIntOrDefault(data.getSize(), 16),
                     positiveIntOrDefault(data.getWidth(), 0),
@@ -325,6 +329,10 @@ public class GraphHtmlService {
 
             return new TextNodePayload(
                     data.getText(),
+                    data.getColor(),
+                    data.getAlign(),
+                    data.getBackgroundColor(),
+                    !Boolean.FALSE.equals(data.getTransparentBackground()),
                     firstNonBlank(data.getFont(), "sans-serif"),
                     positiveIntOrDefault(data.getSize(), 16),
                     positiveIntOrDefault(data.getWidth(), 0),
@@ -847,6 +855,13 @@ public class GraphHtmlService {
                         textElement.style.whiteSpace = "pre-wrap";
                         textElement.style.wordBreak = "break-word";
                         textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+                        const textColor = typeof node.color === "string" ? node.color.trim() : "";
+                        const textAlign = typeof node.align === "string" ? node.align.trim().toLowerCase() : "";
+                        textElement.style.textAlign = (textAlign === "left" || textAlign === "right" || textAlign === "center") ? textAlign : "left";
+                        textElement.style.color = textColor || "inherit";
+                        const isTransparentBackground = node.transparentBackground !== false;
+                        const textBackgroundColor = typeof node.backgroundColor === "string" ? node.backgroundColor.trim() : "";
+                        textElement.style.backgroundColor = isTransparentBackground ? "transparent" : (textBackgroundColor || "transparent");
                         textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
                         textElement.style.fontWeight = node.bold ? "700" : "400";
                         textElement.style.fontStyle = node.italic ? "italic" : "normal";

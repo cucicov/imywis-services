@@ -7,6 +7,10 @@ import java.util.Objects;
 @Data
 public class TextNodePayload {
     public final String text;
+    public final String color;
+    public final String align;
+    public final String backgroundColor;
+    public final boolean transparentBackground;
     public final String font;
     public final int size;
     public final int width;
@@ -22,6 +26,10 @@ public class TextNodePayload {
     public final String clickTarget;
 
     public TextNodePayload(String text,
+                           String color,
+                           String align,
+                           String backgroundColor,
+                           boolean transparentBackground,
                            String font,
                            int size,
                            int width,
@@ -36,6 +44,10 @@ public class TextNodePayload {
                            boolean caps,
                            String clickTarget) {
         this.text = Objects.requireNonNullElse(text, "");
+        this.color = color;
+        this.align = align;
+        this.backgroundColor = backgroundColor;
+        this.transparentBackground = transparentBackground;
         this.font = Objects.requireNonNullElse(font, "sans-serif");
         this.size = size;
         this.width = width;

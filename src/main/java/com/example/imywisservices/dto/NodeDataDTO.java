@@ -17,6 +17,8 @@ public class NodeDataDTO {
     private String backgroundColor;
     private String path;
     private String text;
+    private String color;
+    private String align;
     private String font;
     private String style;
     private Integer size;
@@ -32,6 +34,7 @@ public class NodeDataDTO {
     private Boolean underline;
     private Boolean strikethrough;
     private Boolean caps;
+    private Boolean transparentBackground;
     private Object mouse;
     private String mousePointer;
     private MetadataDTO metadata;
