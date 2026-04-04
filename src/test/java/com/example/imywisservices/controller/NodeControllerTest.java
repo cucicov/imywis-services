@@ -520,6 +520,37 @@ public class NodeControllerTest {
                                 ]
                               }
                             }
+                          },
+                          {
+                            "nodeId": "7",
+                            "type": "imageNode",
+                            "data": {
+                              "path": "https://example.com/external-click.jpg",
+                              "positionX": 50,
+                              "positionY": 60,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "8",
+                                    "type": "eventNode",
+                                    "data": {
+                                      "type": "click",
+                                      "metadata": {
+                                        "sourceNodes": [
+                                          {
+                                            "nodeId": "9",
+                                            "type": "externalLinkNode",
+                                            "data": {
+                                              "url": "https://example.org/landing"
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
                           }
                         ]
                       }
@@ -548,6 +579,10 @@ public class NodeControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("\"clickTarget\":\"target-page.html\""),
                 "Generated HTML should include click target for valid event node page metadata."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"clickTarget\":\"https://example.org/landing\""),
+                "Generated HTML should include click target for click event metadata external link nodes."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("\"clickTarget\":null"),

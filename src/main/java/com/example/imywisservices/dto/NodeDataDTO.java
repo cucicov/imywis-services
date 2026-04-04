@@ -16,6 +16,7 @@ public class NodeDataDTO {
     private String name;
     private String backgroundColor;
     private String path;
+    private String url;
     private String text;
     private String color;
     private String align;

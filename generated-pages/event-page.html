@@ -31,10 +31,10 @@
       <img id="mouse-pointer" alt="mouse-pointer"/>
     </div>
     <script>
-      const BACKGROUND_NODES = [{"cacheKey":"3","style":"tile","x":0,"y":0,"width":651,"height":530,"autoWidth":false,"autoHeight":false,"opacity":1.0,"tileImage":{"src":"https://mara.beautifulneon.xyz/nori-stelute-gif.gif","x":0,"y":0,"width":94,"height":172,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null},"tileText":null,"clickTarget":null}];
-      const IMAGE_NODES = [];
-      const TEXT_NODES = [{"text":" .dddd lorem ipsum dolor ti amet\n\nasd adsd  dsa d d sa","color":"#e01b24","align":"center","backgroundColor":"#813d9c","transparentBackground":false,"font":"sans-serif","size":16,"width":250,"height":185,"x":283,"y":115,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null}];
-      const PAGE_BACKGROUND_COLOR = "#add5d5";
+      const BACKGROUND_NODES = [];
+      const IMAGE_NODES = [{"src":"https://example.com/clickable.jpg","x":10,"y":20,"width":null,"height":null,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"target-page.html","clickTargetWindow":"_self"},{"src":"https://example.com/non-clickable.jpg","x":30,"y":40,"width":null,"height":null,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null},{"src":"https://example.com/external-click.jpg","x":50,"y":60,"width":null,"height":null,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"https://example.org/landing","clickTargetWindow":"_blank"}];
+      const TEXT_NODES = [];
+      const PAGE_BACKGROUND_COLOR = "";
       const MOUSE_POINTER_SRC = "";
       const CANVAS_W = 800;
       const CANVAS_H = 600;
@@ -51,32 +51,41 @@
 
       function resolveClickTarget(node) {
         if (!node || typeof node.clickTarget !== "string") {
-          return "";
+          return null;
         }
-        return node.clickTarget.trim();
+        const url = node.clickTarget.trim();
+        if (!url) {
+          return null;
+        }
+        const requestedWindow = typeof node.clickTargetWindow === "string" ? node.clickTargetWindow.trim() : "";
+        const targetWindow = requestedWindow === "_blank" ? "_blank" : "_self";
+        return { url, targetWindow };
       }
 
       function bindClickRedirect(element, node) {
-        const clickTarget = resolveClickTarget(node);
-        if (!clickTarget) {
+        const clickBinding = resolveClickTarget(node);
+        if (!clickBinding) {
           element.style.pointerEvents = "none";
           element.style.cursor = "default";
           element.removeAttribute("data-click-target");
+          element.removeAttribute("data-click-target-window");
           return;
         }
 
-        const targetUrl = resolveNavigationUrl(clickTarget);
+        const targetUrl = resolveNavigationUrl(clickBinding.url);
         if (!targetUrl) {
           element.style.pointerEvents = "none";
           element.style.cursor = "default";
           element.removeAttribute("data-click-target");
+          element.removeAttribute("data-click-target-window");
           return;
         }
 
         element.style.pointerEvents = "auto";
         element.style.cursor = "pointer";
         element.setAttribute("data-click-target", targetUrl);
-        clickableBindings.push({ element, targetUrl });
+        element.setAttribute("data-click-target-window", clickBinding.targetWindow);
+        clickableBindings.push({ element, targetUrl, targetWindow: clickBinding.targetWindow });
       }
 
       function resolveNavigationUrl(clickTarget) {
@@ -91,6 +100,17 @@
 
         if (target.startsWith("/") || /^https?:\/\//i.test(target)) {
           return target;
+        }
+        if (/^www\./i.test(target)) {
+          return "https://" + target;
+        }
+        if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+          return target;
+        }
+        const looksLikeBareDomain = /^[a-z0-9-]+(\.[a-z0-9-]+)+(?:\:\d+)?(?:[/?#].*)?$/i.test(target);
+        const looksLikeInternalHtml = /\.html?(?:$|[?#/])/i.test(target);
+        if (looksLikeBareDomain && !looksLikeInternalHtml) {
+          return "https://" + target;
         }
 
         const pathName = window.location.pathname || "/";
@@ -116,7 +136,12 @@
           }
           const directTarget = item.getAttribute("data-click-target");
           if (directTarget) {
-            window.location.href = directTarget;
+            const directTargetWindow = item.getAttribute("data-click-target-window");
+            if (directTargetWindow === "_blank") {
+              window.open(directTarget, "_blank", "noopener,noreferrer");
+            } else {
+              window.location.href = directTarget;
+            }
             return;
           }
         }
@@ -137,7 +162,11 @@
               && clickY >= rect.top
               && clickY <= rect.bottom;
           if (inside) {
-            window.location.href = binding.targetUrl;
+            if (binding.targetWindow === "_blank") {
+              window.open(binding.targetUrl, "_blank", "noopener,noreferrer");
+            } else {
+              window.location.href = binding.targetUrl;
+            }
             return;
           }
         }

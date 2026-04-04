@@ -33,6 +33,7 @@ public class GraphHtmlService {
     private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
     private static final String TEXT_NODE_TYPE = "textNode";
     private static final String EVENT_NODE_TYPE = "eventNode";
+    private static final String EXTERNAL_LINK_NODE_TYPE = "externalLinkNode";
     private static final String TILE_STYLE = "tile";
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
@@ -455,6 +456,17 @@ public class GraphHtmlService {
 
                         if (target.startsWith("/") || /^https?:\\/\\//i.test(target)) {
                           return target;
+                        }
+                        if (/^www\\./i.test(target)) {
+                          return "https://" + target;
+                        }
+                        if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+                          return target;
+                        }
+                        const looksLikeBareDomain = /^[a-z0-9-]+(\\.[a-z0-9-]+)+(?:\\:\\d+)?(?:[/?#].*)?$/i.test(target);
+                        const looksLikeInternalHtml = /\\.html?(?:$|[?#/])/i.test(target);
+                        if (looksLikeBareDomain && !looksLikeInternalHtml) {
+                          return "https://" + target;
                         }
 
                         const pathName = window.location.pathname || "/";
@@ -1024,7 +1036,7 @@ public class GraphHtmlService {
     }
 
     private String extractClickTarget(MetadataDTO metadata, Set<String> availablePageNames) {
-        if (metadata == null || metadata.getSourceNodes() == null || availablePageNames == null || availablePageNames.isEmpty()) {
+        if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
 
@@ -1055,9 +1067,9 @@ public class GraphHtmlService {
                 continue;
             }
 
-            String targetPage = extractEventTargetPage(eventData);
-            if (targetPage != null && availablePageNames.contains(targetPage)) {
-                return targetPage;
+            String eventTarget = extractEventTarget(eventData, availablePageNames);
+            if (eventTarget != null) {
+                return eventTarget;
             }
 
             MetadataDTO nestedMetadata = eventData.getMetadata();
@@ -1069,22 +1081,39 @@ public class GraphHtmlService {
         return null;
     }
 
-    private String extractEventTargetPage(NodeDataDTO eventData) {
+    private String extractEventTarget(NodeDataDTO eventData, Set<String> availablePageNames) {
         if (eventData == null || eventData.getMetadata() == null || eventData.getMetadata().getSourceNodes() == null) {
             return null;
         }
 
         for (NodeDTO metadataNode : eventData.getMetadata().getSourceNodes()) {
-            if (metadataNode == null || !PAGE_NODE_TYPE.equals(metadataNode.getType())) {
+            if (metadataNode == null) {
+                continue;
+            }
+
+            if (PAGE_NODE_TYPE.equals(metadataNode.getType())) {
+                NodeDataDTO data = metadataNode.getData();
+                if (data == null || data.getName() == null || data.getName().isBlank()) {
+                    continue;
+                }
+
+                String targetPage = normalizeFileName(data.getName());
+                if (availablePageNames != null && availablePageNames.contains(targetPage)) {
+                    return targetPage;
+                }
+                continue;
+            }
+
+            if (!EXTERNAL_LINK_NODE_TYPE.equals(metadataNode.getType())) {
                 continue;
             }
 
             NodeDataDTO data = metadataNode.getData();
-            if (data == null || data.getName() == null || data.getName().isBlank()) {
+            if (data == null || data.getUrl() == null || data.getUrl().isBlank()) {
                 continue;
             }
 
-            return normalizeFileName(data.getName());
+            return data.getUrl().trim();
         }
 
         return null;
