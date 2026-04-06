@@ -32,6 +32,8 @@ public class NodeController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Nodes processed successfully");
+            response.put("userId", graph.getUserId());
+            response.put("userHandle", graph.getUserHandle());
             response.put("nodes", graph.getNodes());
             return ResponseEntity.ok(response);
         } catch (Exception e) {

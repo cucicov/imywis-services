@@ -238,6 +238,77 @@ public class NodeControllerTest {
 
     @Test
     @WithMockUser
+    public void testProcessNodesWithPagesDataAndUserId() throws Exception {
+        String json = """
+                {
+                  "userid": "7f38e07d-54a5-441f-8699-fad202e10de0",
+                  "userHandle": "cucicov",
+                  "pagesData": [
+                    {
+                      "id": "1",
+                      "type": "pageNode",
+                      "position": {
+                        "x": 301.6966897670149,
+                        "y": -235.7127117276633
+                      },
+                      "data": {
+                        "label": "pageNode",
+                        "name": "index.html",
+                        "backgroundColor": "#add5d5",
+                        "metadata": {
+                          "sourceNodes": [
+                            {
+                              "nodeId": "2",
+                              "type": "textNode",
+                              "handleType": "red-output",
+                              "data": {
+                                "text": "asdasdasda",
+                                "color": "#000000",
+                                "backgroundColor": "#ffffff",
+                                "transparentBackground": true,
+                                "align": "left",
+                                "font": "sans-serif",
+                                "size": 16,
+                                "width": 250,
+                                "height": 120,
+                                "positionX": 0,
+                                "positionY": 0,
+                                "opacity": 1,
+                                "bold": false,
+                                "italic": false,
+                                "underline": false,
+                                "strikethrough": false,
+                                "caps": false
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.userId").value("7f38e07d-54a5-441f-8699-fad202e10de0"))
+                .andExpect(jsonPath("$.userHandle").value("cucicov"))
+                .andExpect(jsonPath("$.nodes.length()").value(1))
+                .andExpect(jsonPath("$.nodes[0].id").value("1"));
+
+        Path generatedFile = Path.of("generated-pages", "cucicov", "index.html");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                Files.exists(generatedFile),
+                "POST /api/nodes with userHandle should write generated pages under generated-pages/{userHandle}."
+        );
+    }
+
+    @Test
+    @WithMockUser
     public void testProcessNodesWithBackgroundNode() throws Exception {
         String json = """
                 [

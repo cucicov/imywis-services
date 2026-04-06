@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -39,6 +40,7 @@ public class GraphHtmlService {
     private static final String DEFAULT_CLICK_TARGET_WINDOW = "_self";
     private static final String NEW_WINDOW_CLICK_TARGET = "_blank";
     private static final String TILE_STYLE = "tile";
+    private static final Pattern USER_HANDLE_SANITIZER_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -52,7 +54,8 @@ public class GraphHtmlService {
             throw new Exception("No nodes found in the graph");
         }
 
-        clearGeneratedPages();
+        String userHandle = sanitizeUserHandle(graph.getUserHandle());
+        clearGeneratedPages(userHandle);
         lastGeneratedFile.set(null);
 
         Map<String, PageTargetConfig> pageTargetConfigs = collectPageTargetConfigs(graph.getNodes());
@@ -61,15 +64,15 @@ public class GraphHtmlService {
             if (node == null || !PAGE_NODE_TYPE.equals(node.getType())) {
                 continue;
             }
-            Path generated = generatePage(node, pageTargetConfigs);
+            Path generated = generatePage(node, pageTargetConfigs, userHandle);
             if (generated != null) {
                 lastGeneratedFile.set(generated);
             }
         }
     }
 
-    private void clearGeneratedPages() throws Exception {
-        Path outputDir = getOutputDir();
+    private void clearGeneratedPages(String userHandle) throws Exception {
+        Path outputDir = getUserOutputDir(userHandle);
         if (!Files.exists(outputDir)) {
             return;
         }
@@ -110,7 +113,11 @@ public class GraphHtmlService {
         return getOutputDir();
     }
 
-    private Path generatePage(NodeDTO pageNode, Map<String, PageTargetConfig> pageTargetConfigs) throws Exception {
+    public Path getGeneratedPagesDir(String userHandle) {
+        return getUserOutputDir(userHandle);
+    }
+
+    private Path generatePage(NodeDTO pageNode, Map<String, PageTargetConfig> pageTargetConfigs, String userHandle) throws Exception {
         NodeDataDTO data = pageNode.getData();
         if (data == null || data.getName() == null || data.getName().isBlank()) {
             return null;
@@ -120,7 +127,7 @@ public class GraphHtmlService {
         int canvasHeight = data.getHeight() != null ? data.getHeight() : DEFAULT_CANVAS_HEIGHT;
 
         String fileName = normalizeFileName(data.getName());
-        Path outputDir = getOutputDir();
+        Path outputDir = getUserOutputDir(userHandle);
         Path outputFile = outputDir.resolve(fileName);
 
         List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs);
@@ -567,8 +574,8 @@ public class GraphHtmlService {
                           return pathName.slice(0, lastSlash + 1) + target;
                         }
 
-                        return pathName + "/" + target;
-                      }
+        return pathName + "/" + target;
+      }
 
                       function handleStageClick(event) {
                         const path = event.composedPath ? event.composedPath() : [];
@@ -1095,6 +1102,24 @@ public class GraphHtmlService {
             return Paths.get(envDir.trim());
         }
         return Paths.get(OUTPUT_DIR_NAME);
+    }
+
+    private Path getUserOutputDir(String userHandle) {
+        Path outputRoot = getOutputDir();
+        String sanitizedUserHandle = sanitizeUserHandle(userHandle);
+        if (sanitizedUserHandle == null) {
+            return outputRoot;
+        }
+        return outputRoot.resolve(sanitizedUserHandle);
+    }
+
+    private String sanitizeUserHandle(String userHandle) {
+        if (userHandle == null || userHandle.isBlank()) {
+            return null;
+        }
+
+        String sanitized = USER_HANDLE_SANITIZER_PATTERN.matcher(userHandle.trim()).replaceAll("_");
+        return sanitized.isBlank() ? null : sanitized;
     }
 
     private String normalizeFileName(String name) {

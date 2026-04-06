@@ -19,10 +19,13 @@ public class GeneratedPageController {
         this.graphHtmlService = graphHtmlService;
     }
 
-    @GetMapping(value = {"/test", "/test/{pageName:.+}"}, produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getGeneratedPage(@PathVariable(name = "pageName", required = false) String pageName) {
-        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir();
-        String targetName = (pageName == null || pageName.isBlank()) ? "index.html" : pageName;
+    @GetMapping(value = {"/{userHandle}", "/{userHandle}/{pageName:.+\\.html}"},
+            produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> getGeneratedPage(
+            @PathVariable(name = "userHandle") String userHandle,
+            @PathVariable(name = "pageName", required = false) String pageName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir(userHandle);
+        String targetName = (pageName == null || pageName.isBlank()) ? "index.html" : pageName.trim();
         Path requestedPath = generatedPagesDir.resolve(targetName).normalize();
 
         // Prevent resolving files outside the generated pages directory.
@@ -33,6 +36,7 @@ public class GeneratedPageController {
             String html = Files.readString(requestedPath, StandardCharsets.UTF_8);
             return ResponseEntity.ok(html);
         } catch (Exception e) {
+            System.err.println("Error reading generated page: " + requestedPath);
             return ResponseEntity.internalServerError().build();
         }
     }

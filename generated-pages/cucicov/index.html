@@ -1,0 +1,638 @@
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8"/>
+              <meta name="viewport" content="width=device-width, initial-scale=1"/>
+              <title>Generated Page</title>
+              <style>
+                html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
+                #stage { position: relative; width: 2880px; height: 2400px; overflow: hidden; }
+                #background-layer { position: absolute; inset: 0; z-index: 0; }
+                #image-layer { position: absolute; inset: 0; z-index: 1; }
+                #text-layer { position: absolute; inset: 0; z-index: 2; }
+                canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
+                #mouse-pointer {
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  z-index: 4;
+                  pointer-events: none;
+                  display: none;
+                  transform: translate(0px, 0px);
+                }
+              </style>
+              <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+            </head>
+            <body>
+              <div id="stage">
+                <div id="background-layer"></div>
+                <div id="image-layer"></div>
+                <div id="text-layer"></div>
+                <img id="mouse-pointer" alt="mouse-pointer"/>
+              </div>
+              <script>
+                const BACKGROUND_NODES = [{"cacheKey":"2","style":"tile","x":0,"y":0,"width":2880,"height":2400,"autoWidth":true,"autoHeight":true,"opacity":1.0,"tileImage":{"src":"https://mara.beautifulneon.xyz/nori-stelute-gif.gif","x":0,"y":0,"width":123,"height":203,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},"tileText":null,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null}];
+                const IMAGE_NODES = [{"src":"https://mara.beautifulneon.xyz/background-fara-disclaimer.png","x":124,"y":50,"width":2200,"height":2200,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/cat%20on%20mail.gif","x":394,"y":127,"width":94,"height":90,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/DSC02296.JPG","x":1833,"y":127,"width":146,"height":109,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/brown-din-masina.gif","x":1787,"y":283,"width":165,"height":137,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/Photo-28.jpg","x":1656,"y":473,"width":120,"height":95,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/8c14.jpg","x":707,"y":464,"width":164,"height":117,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/maras-own-computer.gif","x":320,"y":459,"width":209,"height":27,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/plane-tail.gif","x":608,"y":176,"width":1185,"height":105,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/walking-woman-breast-cancer-gif.gif","x":706,"y":696,"width":152,"height":235,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/20260203_192217.jpg","x":317,"y":1000,"width":374,"height":247,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/MMS-connex.jpg","x":720,"y":1000,"width":339,"height":246,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/BROWN-05-202.jpg","x":1100,"y":998,"width":301,"height":248,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/Mare-Iulie-2005-063.jpg","x":1461,"y":1096,"width":155,"height":124,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"https://youtu.be/uPhEmv832Cs?si=mA9vSQ9UCxQYmmje","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/bilete-ro-prima-pagina.png","x":1829,"y":969,"width":380,"height":457,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"newsletterbiletero.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":480,"clickTargetPopupHeight":1300},{"src":"https://mara.beautifulneon.xyz/everex.webp","x":1541,"y":1373,"width":252,"height":191,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/angel-girlie.png","x":761,"y":1675,"width":352,"height":303,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"xmas_ppt.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":2880,"clickTargetPopupHeight":2440},{"src":"https://mara.beautifulneon.xyz/91fb.jpg","x":288,"y":1999,"width":164,"height":208,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/webchat-banner.gif","x":1976,"y":2083,"width":160,"height":35,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/2-2129595-2-1.GIF","x":2053,"y":1688,"width":202,"height":177,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/writing-mail-emoji.gif","x":906,"y":361,"width":100,"height":100,"autoWidth":true,"autoHeight":true,"opacity":1.0,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"src":"https://mara.beautifulneon.xyz/tomyfriends-duckie.png","x":2075,"y":470,"width":100,"height":117,"autoWidth":false,"autoHeight":false,"opacity":1.0,"clickTarget":"tomyfriends.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1000,"clickTargetPopupHeight":3800}];
+                const TEXT_NODES = [{"text":"Tot ce vrei să știi despre","color":"#e100ff","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":266,"height":154,"x":1970,"y":282,"opacity":1.0,"bold":true,"italic":true,"underline":false,"strikethrough":false,"caps":true,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"cum mergea netul în anul 2000","color":"#053ea4","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":303,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"numergenetul.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":2400,"clickTargetPopupHeight":1080},{"text":"cum se simțeau adolescenții la liceu","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":320,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"plictiseala.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1920,"clickTargetPopupHeight":1080},{"text":"cât alcool se consuma","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":338,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"alcool.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1800,"clickTargetPopupHeight":1800},{"text":"cât costa facultatea în SUA","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":355,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"banibrown.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1500,"clickTargetPopupHeight":2400},{"text":"cât de scumpe erau cartelele de telefon","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":372,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"tmobile.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1600,"clickTargetPopupHeight":1800},{"text":"ce chainmailuri și ppturi circulau","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":388,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"testpersonalitate.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1200,"clickTargetPopupHeight":8000},{"text":"ce educație sexuală primeam","color":"#0540c0","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":250,"height":120,"x":1972,"y":405,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"lovemaking.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1800,"clickTargetPopupHeight":3000},{"text":"Date:Wednesday, November 13, 2002 at 05:31 PM GMT+2","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":254,"height":113,"x":1799,"y":547,"opacity":0.34,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":" i passed out in another dorm. they tried waking me up and literally abused me-sat on me dragged me on the floor-but nothing. and i walked out of the dorm without shoes. ","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":11,"width":95,"height":171,"x":563,"y":469,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"ti kaneis???? hot people you say? beautiful beautiful \nMALAKA guess where I am writing to you from?? ","color":"#053ea4","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":12,"width":155,"height":201,"x":336,"y":505,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"maraasowncomputer.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":2880,"clickTargetPopupHeight":2440},{"text":"> > > > > >> Oaia semnifica DRAGOSTE > > > > > >> Calul semnifica FAMILIE > > > > > >> Porcul semnifica BANI > > > > > >> > > > > > >","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":19,"width":1243,"height":80,"x":303,"y":651,"opacity":1.0,"bold":true,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"oaiasemnificadragoste.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1200,"clickTargetPopupHeight":8000},{"text":"salut salut\nah as vrea sa fiu mult mai detaliata in ce-ti scriu\ndar saptamana asta si urmatoarea ar trebui sa scriu\nvreo 30 de pagini. asa ca pentru moment foarte multa\nmunca.\nasa ca promit un email mult mai detaliat peste 2\nsaptamani.\nte pup cu mult drag","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":17,"width":564,"height":184,"x":307,"y":707,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Ce mai, prevad lucruri bune pentru 2007. Parca asa mi-au prezis astrele.","color":"#0d4e63","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":16,"width":540,"height":120,"x":1625,"y":607,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"severalmonthslater.html","clickTargetWindow":"_self","clickTargetPopup":true,"clickTargetPopupWidth":400,"clickTargetPopupHeight":280},{"text":"mi-a lipsit mult grecia asta n-am ce zice. ","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":252,"height":120,"x":383,"y":1304,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"SIKOSE TO TO GAMIMENO THEN BORO THEN BORO NA\nPERIMENO","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":20,"width":273,"height":120,"x":383,"y":1349,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"https://youtu.be/S3qyjP1s_z4?si=Its71EjxRZ8YPBm8","clickTargetWindow":"_blank","clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"my whole summer was overshadowed by the question of what the hell am I doing in Romania? So I did cry myself to sleep most of the summer but that is nothing I know. Just family drama and not so bad either.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":17,"width":293,"height":162,"x":728,"y":1299,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"i had my first real american club experience and it was kind of disgusting. only 15 year old girls and 50 year old men and nothing in between all rubbing against each other. ayayay. you have no idea. there was no oxygen. and everyone was rubbing against each other. it was very sad.","color":"#2bff00","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":16,"width":291,"height":230,"x":1102,"y":1300,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":true,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Grecia","color":"#fa0000","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":20,"width":250,"height":120,"x":467,"y":1262,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"România","color":"#fa0000","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":20,"width":250,"height":120,"x":828,"y":1262,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"SUA","color":"#fa0000","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":20,"width":250,"height":120,"x":1227,"y":1261,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"kala. i will reply when above info is given. otherwise know that i am scrunched up in front of the computer looking fora job and having beer.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":158,"height":137,"x":1464,"y":984,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"am incercat sa sun aseara dar reteaua era plina si am zis ca in schimb va trimit mesaj. si asa am facut.astazi cind atisunat dormean si m-am sculat prea tarziu ca sa vorbim.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":10,"width":162,"height":140,"x":1678,"y":995,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"saptamana viitoare ma intorc si eu in state. am stat cam mult prin romania si am realizat ca nu prea ma simt eu in apele mele acolo. a trecut mult timp. ","color":"#0032fa","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":15,"width":171,"height":140,"x":1678,"y":1084,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"maria has sent you a hi5 Message\nFrom: hi5 (info@hi5.com)","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":13,"width":282,"height":120,"x":1541,"y":1250,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"deci uite lista cu cheltuieli, si incep cu cele mai mari: a. telefon-initial 150 dolari pentru telefon si serviciu si dupa aia se adauga minutele care au fost cam 250 de dolari pana azi.-aprox. 50 pe luna. ceea ce am realizat mai tarziu a fost ca ma taxeaza cand ma suna lumea si cu\nmesajele. deci de la telefon cam 400 de dolari s-au dus.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":10,"width":411,"height":135,"x":1461,"y":1305,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"YouTube  Broadcast Yourself™","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":24,"width":381,"height":278,"x":1056,"y":1549,"opacity":0.5,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Dear mara---@yahoo.com,\nWe're writing to confirm your purchase of the following Amazon Marketplace\nitem from orders@newburycomics.com:\n1 of The Dresden Dolls [ENHANCED] [EXPLICIT LYRICS] [Audio CD] The Dresden\nDolls\n**************************************************","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":10,"width":438,"height":120,"x":1060,"y":1585,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"https://youtu.be/_xoniTn7ygA?si=hVrfW4RXvpETK6xO","clickTargetWindow":"_blank","clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Flight: LH 425 operated by: LUFTHANSA\nfrom: BOSTON MA LOGAN INTL, TERMINAL E\nto: MUNICH DE FRANZ J STRAUSS, TERMINAL 2\nDeparture: 19. May, 18:45 h\nArrival: 20. May, 08:10 h\nClass: Economy Class (Q), confirmed\nseat: 24H NONSMOKER\n____________________","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":16,"width":382,"height":331,"x":1881,"y":1450,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Current Amount Due as of Aug 14, 2008: $23,076.35\nFS16 Brown University Scholarship $23,055.00","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":12,"width":300,"height":231,"x":1867,"y":1614,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Name: Mara\nNick Names: maramara, marutz, hazomara, mara para\nBirthdate:-/-/85\nFavorite Food: iaurt cu ovaz si fructe de padure si banana si gochujang, orice cu gochujang, si popcorn cu mult ulei sau unt și sare, orice mâncare ce se poate mânca într-un bol/strachină\nFavorite Colors: albastru, roz, gri petrol, peach\nFavorite Music: indie rock, ceva punk, house si manele\nFavorite Bands: Cold War Kids, Air, No Doubt, TV on the radio, The Strokes, EMAA, Bastos, Cardinal, the Cardigans, the Dresden Dolls\nHobbies: să mă uit la reality tv\nDislikes: oamenii aroganți și narcisiști care și-o ard timizi și modești, motocicliștii care fac zgomot\nTalents: să vărs chestii în mod artistic","color":"#210641","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":12,"width":437,"height":600,"x":304,"y":1688,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"10. A lot of lovemaking can unblock a stuffy nose. Sex is anatural antihistamine. It can help combat asthma and hay fever.","color":"#ea7cf8","align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":11,"width":250,"height":120,"x":369,"y":1904,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"i am sitting in a radio station right now doing a SHOW. ","color":"#fe0606","align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":17,"width":424,"height":120,"x":1598,"y":1867,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"https://www.wbru.com/","clickTargetWindow":"_blank","clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Ce mai. Dorm, mananc, o sa incep sa muncesc in curand. Ce viata","color":"#000000","align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":16,"width":250,"height":120,"x":1183,"y":1697,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Date:\nFriday, July 20, 2007 at 11:53 AM GMT+3\nAm primit 9 mil ron.\nDin astia urmatoarele au fost costurile:\nMancare 3 milioane.\nDentist 1.5 milioane.\nIesiri 19 milion.","color":"#9d0aff","align":"left","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":15,"width":236,"height":164,"x":1794,"y":1690,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Felicitari!!! Bai, vazusem eu I do la status si am tot vrut sa intreb. Vai imi vine sa plang. Felicitari!!!!!!Adica, da, voi fi acolo, nu pierd pentru nimic momentul! Si vreau sa vad inelul nu stiu cum, dar as vrea.Cum ti-a propus? Sau i-ai propus tu???\nBAAAAAAAAI TE MARIIIIIIIIIIIIIIIIIIIIIIIIIIIITIIIIII!!!!!\nFelicitari!!!!\nEu sunt singurica din nou-dar fericita :)","color":null,"align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":372,"height":180,"x":458,"y":2000,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"eu- ma adaptez cum pot mai bine. nu stiu cat mai stau aici dar pentru moment imi caut un job, mainterez de mastere, ma plictisesc, ma joc cu pisica, e liniste pe aici-foarte liniste.","color":"#70008f","align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":12,"width":334,"height":432,"x":838,"y":2000,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Sent: Tue, January 19, 2010 2:57:11 PM\nSubject: cred ca ai un viruspe mess ...sau ceva de genu","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":263,"height":120,"x":1924,"y":2010,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"stiu ca vrei sa o iau zi cu zi dar imi este foarte greu.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":385,"height":120,"x":1479,"y":1582,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Hai linistete-te ca o mie de copii tanjesc sa fie in locul tau si tu te rasfeti asa ca un copil mic.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":11,"width":565,"height":120,"x":1434,"y":1599,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"mi-e greu. mi-e frica sa fiu in mintea mea pentru ca nu pot gindi logic acum.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":10,"width":463,"height":113,"x":1466,"y":1612,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Dear Mr. Maracinescu,\nMara's illness is depression","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":8,"width":99,"height":105,"x":1599,"y":1634,"opacity":0.5,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"scrisoarereaplicare.html","clickTargetWindow":"_self","clickTargetPopup":false,"clickTargetPopupWidth":1400,"clickTargetPopupHeight":3000},{"text":"tu unde ai internetul? il ai in camin sau trebuie sa t duci\nprin vreun net? t rog raspunde-mi la intrebarile astea ca sa stiu si eu nu d alta dar daca il ai in camin stam si noi mai\nmult d vorba... ","color":"#000000","align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":15,"width":283,"height":172,"x":1140,"y":468,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":"undenetul.html","clickTargetWindow":"_self","clickTargetPopup":true,"clickTargetPopupWidth":430,"clickTargetPopupHeight":780},{"text":"iti scriu ca sa te anun ca iar nu imi mai merge compu.cred ca iar s-a ars. acum iti scriu de la ora de fizica.am avut o saptamna plina si nu prea am timp sa intru pe net","color":null,"align":"center","backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":203,"height":147,"x":1428,"y":468,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Lume, lume , intr-un final glorios am reusit sa pun mana pe calculatorul bun (adica ala care nu crapa din 10 in 10 secunde si nu este din epoca preistorica) asa ca pot scrie in liniste si pace tuturor.","color":null,"align":null,"backgroundColor":null,"transparentBackground":true,"font":"sans-serif","size":14,"width":244,"height":173,"x":885,"y":468,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"Bună! Mi-am dat seama anul ăsta că am adresa de mail de Yahoo de 25 de ani. Am zis să văd ce e acolo. Așa că aici, găsești fragmente din mailurile mele de pe Yahoo din 2002-2010. Pentru că am fost plecată din țară vreo 10 ani vorbeam des cu prietenele prin mailuri, când nu apucam să ne auzim la telefonul fix că pe mobil nu ne auzeam oricum că era prea scump. \nMai jos sunt fragmente din mailuri, poze găsite prin inbox, și alte amintiri. ","color":"#0540c0","align":"center","backgroundColor":"#ffffff","transparentBackground":true,"font":"sans-serif","size":17,"width":755,"height":115,"x":889,"y":285,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"noi acum ne-am pus acasa net prin cablu asa ca ................. ne mircuim si noi pe aici as vrea sa vb si noi pe chat ca nu ma mai vb de foarte multa vreme si mi se face dor de voi","color":"#000000","align":"left","backgroundColor":"#ffffff","transparentBackground":true,"font":"sans-serif","size":13,"width":271,"height":102,"x":1800,"y":476,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"the highlight of my week: la biblioteca pe la 1 dimineata. si deodata ma trezesc cu vreo 3 persoane nude-in toata frumusetea data de natura in fata mea oferindu-mi o gogoasa. ha. think about it. ritualul se numeste -naked donut run si exact asta esete. e mai ciudat insa cand stii pe majoritatea. ","color":"#000000","align":"left","backgroundColor":"#ffffff","transparentBackground":true,"font":"sans-serif","size":14,"width":250,"height":217,"x":1530,"y":1707,"opacity":1.0,"bold":false,"italic":false,"underline":false,"strikethrough":false,"caps":false,"clickTarget":null,"clickTargetWindow":null,"clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null},{"text":"ma uitam la noul video clip al madonei pe un site suedez cred  si vad in topul melodiilor cele mai populare ackent.  zic. nu se poate. ba uite ca da.  versiunea in engleza care la un moment zice  later you can sing to me like a shining star  BUT i'd rather do you on the back seat of my car.  OH MY GOD.  nu pot.\nin plus\ni should be lucky to sleep with you tonight\nnu se poate","color":"#0540c0","align":"left","backgroundColor":"#ffffff","transparentBackground":true,"font":"sans-serif","size":17,"width":338,"height":159,"x":1156,"y":1761,"opacity":1.0,"bold":false,"italic":false,"underline":true,"strikethrough":false,"caps":false,"clickTarget":"https://youtu.be/wOem06X3uVo?si=PX9XPkiYu_LtmhWT","clickTargetWindow":"_blank","clickTargetPopup":false,"clickTargetPopupWidth":null,"clickTargetPopupHeight":null}];
+                const PAGE_BACKGROUND_COLOR = "#0000ff";
+                const MOUSE_POINTER_SRC = "https://mara.beautifulneon.xyz/envelopeheart3.png";
+                const CANVAS_W = 2880;
+                const CANVAS_H = 2400;
+
+                const TILE_STYLE = "tile";
+                const imageCache = new Map();
+                const stageElement = document.getElementById("stage");
+                const backgroundLayerElement = document.getElementById("background-layer");
+                const imageLayerElement = document.getElementById("image-layer");
+                const textLayerElement = document.getElementById("text-layer");
+                const mousePointerElement = document.getElementById("mouse-pointer");
+                const clickableBindings = [];
+                let hasCustomMousePointer = false;
+
+                function resolveClickTarget(node) {
+                  if (!node || typeof node.clickTarget !== "string") {
+                    return null;
+                  }
+                  const url = node.clickTarget.trim();
+                  if (!url) {
+                    return null;
+                  }
+                  const requestedWindow = typeof node.clickTargetWindow === "string" ? node.clickTargetWindow.trim() : "";
+                  const targetWindow = requestedWindow === "_blank" ? "_blank" : "_self";
+                  const popup = Boolean(node.clickTargetPopup);
+                  const popupWidth = Math.max(0, Number(node.clickTargetPopupWidth) || 0);
+                  const popupHeight = Math.max(0, Number(node.clickTargetPopupHeight) || 0);
+                  return { url, targetWindow, popup, popupWidth, popupHeight };
+                }
+
+                function bindClickRedirect(element, node) {
+                  const clickBinding = resolveClickTarget(node);
+                  if (!clickBinding) {
+                    element.style.pointerEvents = "none";
+                    element.style.cursor = "default";
+                    element.removeAttribute("data-click-target");
+                    element.removeAttribute("data-click-target-window");
+                    element.removeAttribute("data-click-target-popup");
+                    element.removeAttribute("data-click-target-popup-width");
+                    element.removeAttribute("data-click-target-popup-height");
+                    return;
+                  }
+
+                  const targetUrl = resolveNavigationUrl(clickBinding.url);
+                  if (!targetUrl) {
+                    element.style.pointerEvents = "none";
+                    element.style.cursor = "default";
+                    element.removeAttribute("data-click-target");
+                    element.removeAttribute("data-click-target-window");
+                    element.removeAttribute("data-click-target-popup");
+                    element.removeAttribute("data-click-target-popup-width");
+                    element.removeAttribute("data-click-target-popup-height");
+                    return;
+                  }
+
+                  element.style.pointerEvents = "auto";
+                  element.style.cursor = "pointer";
+                  element.setAttribute("data-click-target", targetUrl);
+                  element.setAttribute("data-click-target-window", clickBinding.targetWindow);
+                  element.setAttribute("data-click-target-popup", clickBinding.popup ? "true" : "false");
+                  if (clickBinding.popupWidth > 0) {
+                    element.setAttribute("data-click-target-popup-width", String(clickBinding.popupWidth));
+                  } else {
+                    element.removeAttribute("data-click-target-popup-width");
+                  }
+                  if (clickBinding.popupHeight > 0) {
+                    element.setAttribute("data-click-target-popup-height", String(clickBinding.popupHeight));
+                  } else {
+                    element.removeAttribute("data-click-target-popup-height");
+                  }
+                  clickableBindings.push({
+                    element,
+                    targetUrl,
+                    targetWindow: clickBinding.targetWindow,
+                    popup: clickBinding.popup,
+                    popupWidth: clickBinding.popupWidth,
+                    popupHeight: clickBinding.popupHeight
+                  });
+                }
+
+                function openPopupWindow(targetUrl, popupWidth, popupHeight) {
+                  const popupFeatures = ["popup=yes", "noopener", "noreferrer"];
+                  if (popupWidth > 0) {
+                    popupFeatures.push(`width=${Math.round(popupWidth)}`);
+                  }
+                  if (popupHeight > 0) {
+                    popupFeatures.push(`height=${Math.round(popupHeight)}`);
+                  }
+                  return window.open(targetUrl, "_blank", popupFeatures.join(","));
+                }
+
+                function navigateToTarget(targetUrl, targetWindow, popup, popupWidth, popupHeight) {
+                  if (popup) {
+                    openPopupWindow(targetUrl, popupWidth, popupHeight);
+                    return;
+                  }
+                  if (targetWindow === "_blank") {
+                    window.open(targetUrl, "_blank", "noopener,noreferrer");
+                  } else {
+                    window.location.href = targetUrl;
+                  }
+                }
+
+                function resolveNavigationUrl(clickTarget) {
+                  if (!clickTarget) {
+                    return "";
+                  }
+
+                  const target = String(clickTarget).trim();
+                  if (!target) {
+                    return "";
+                  }
+
+                  if (target.startsWith("/") || /^https?:\/\//i.test(target)) {
+                    return target;
+                  }
+                  if (/^www\./i.test(target)) {
+                    return "https://" + target;
+                  }
+                  if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+                    return target;
+                  }
+                  const looksLikeBareDomain = /^[a-z0-9-]+(\.[a-z0-9-]+)+(?:\:\d+)?(?:[/?#].*)?$/i.test(target);
+                  const looksLikeInternalHtml = /\.html?(?:$|[?#/])/i.test(target);
+                  if (looksLikeBareDomain && !looksLikeInternalHtml) {
+                    return "https://" + target;
+                  }
+
+                  const pathName = window.location.pathname || "/";
+                  if (pathName.endsWith("/")) {
+                    return pathName + target;
+                  }
+
+                  const lastSlash = pathName.lastIndexOf("/");
+                  const lastSegment = lastSlash >= 0 ? pathName.slice(lastSlash + 1) : pathName;
+                  const looksLikeFile = lastSegment.includes(".");
+                  if (looksLikeFile && lastSlash >= 0) {
+                    return pathName.slice(0, lastSlash + 1) + target;
+                  }
+
+  return pathName + "/" + target;
+}
+
+                function handleStageClick(event) {
+                  const path = event.composedPath ? event.composedPath() : [];
+                  for (const item of path) {
+                    if (!item || !item.getAttribute) {
+                      continue;
+                    }
+                    const directTarget = item.getAttribute("data-click-target");
+                    if (directTarget) {
+                      const directTargetWindow = item.getAttribute("data-click-target-window");
+                      const directTargetPopup = item.getAttribute("data-click-target-popup") === "true";
+                      const directTargetPopupWidth = Math.max(0, Number(item.getAttribute("data-click-target-popup-width")) || 0);
+                      const directTargetPopupHeight = Math.max(0, Number(item.getAttribute("data-click-target-popup-height")) || 0);
+                      navigateToTarget(directTarget, directTargetWindow, directTargetPopup, directTargetPopupWidth, directTargetPopupHeight);
+                      return;
+                    }
+                  }
+
+                  const clickX = event.clientX;
+                  const clickY = event.clientY;
+                  for (let i = clickableBindings.length - 1; i >= 0; i--) {
+                    const binding = clickableBindings[i];
+                    if (!binding || !binding.element || !binding.targetUrl) {
+                      continue;
+                    }
+                    const rect = binding.element.getBoundingClientRect();
+                    if (rect.width <= 0 || rect.height <= 0) {
+                      continue;
+                    }
+                    const inside = clickX >= rect.left
+                        && clickX <= rect.right
+                        && clickY >= rect.top
+                        && clickY <= rect.bottom;
+                    if (inside) {
+                      navigateToTarget(
+                          binding.targetUrl,
+                          binding.targetWindow,
+                          Boolean(binding.popup),
+                          Math.max(0, Number(binding.popupWidth) || 0),
+                          Math.max(0, Number(binding.popupHeight) || 0)
+                      );
+                      return;
+                    }
+                  }
+                }
+
+                function updateStageCursor(event) {
+                  let isOverClickable = false;
+
+                  const path = event && event.composedPath ? event.composedPath() : [];
+                  for (const item of path) {
+                    if (!item || !item.getAttribute) {
+                      continue;
+                    }
+                    const directTarget = item.getAttribute("data-click-target");
+                    if (directTarget) {
+                      isOverClickable = true;
+                      break;
+                    }
+                  }
+
+                  if (!isOverClickable) {
+                    const moveX = event ? event.clientX : 0;
+                    const moveY = event ? event.clientY : 0;
+                    for (let i = clickableBindings.length - 1; i >= 0; i--) {
+                      const binding = clickableBindings[i];
+                      if (!binding || !binding.element || !binding.targetUrl) {
+                        continue;
+                      }
+                      const rect = binding.element.getBoundingClientRect();
+                      if (rect.width <= 0 || rect.height <= 0) {
+                        continue;
+                      }
+                      const inside = moveX >= rect.left
+                          && moveX <= rect.right
+                          && moveY >= rect.top
+                          && moveY <= rect.bottom;
+                      if (inside) {
+                        isOverClickable = true;
+                        break;
+                      }
+                    }
+                  }
+
+                  if (isOverClickable) {
+                    stageElement.style.cursor = "pointer";
+                    if (hasCustomMousePointer) {
+                      mousePointerElement.style.display = "none";
+                    }
+                    return;
+                  }
+
+                  if (hasCustomMousePointer) {
+                    stageElement.style.cursor = "none";
+                    mousePointerElement.style.display = "block";
+                  } else {
+                    stageElement.style.cursor = "default";
+                    mousePointerElement.style.display = "none";
+                  }
+                }
+
+                function toProxyUrl(url) {
+                  if (!url) return url;
+                  const trimmed = url.trim();
+                  if (!trimmed) return trimmed;
+                  const lower = trimmed.toLowerCase();
+                  if (lower.startsWith("http://") || lower.startsWith("https://")) {
+                    return "https://corsproxy.io/?key=80b6bad2&url=" + encodeURIComponent(trimmed);
+                  }
+                  return trimmed;
+                }
+
+                function clamp01(value) {
+                  const n = Number(value);
+                  if (Number.isNaN(n)) return 1;
+                  return Math.max(0, Math.min(1, n));
+                }
+
+                function isLikelyGif(src) {
+                  if (!src) return false;
+                  return /\.gif(?:$|[?#])/i.test(src);
+                }
+
+                function getImageResource(src) {
+                  if (!src) return null;
+                  if (imageCache.has(src)) {
+                    return imageCache.get(src);
+                  }
+
+                  const img = new Image();
+
+                  const resource = {
+                    src,
+                    img,
+                    loaded: false,
+                    errored: false,
+                    usedProxy: false,
+                    onLoadCallbacks: []
+                  };
+
+                  img.onload = () => {
+                    resource.loaded = true;
+                    for (const callback of resource.onLoadCallbacks) {
+                      try {
+                        callback();
+                      } catch (e) {
+                        // noop
+                      }
+                    }
+                  };
+
+                  img.onerror = () => {
+                    if (!resource.usedProxy && !isLikelyGif(src)) {
+                      const lower = src.toLowerCase();
+                      if (lower.startsWith("http://") || lower.startsWith("https://")) {
+                        resource.usedProxy = true;
+                        img.src = toProxyUrl(src);
+                        return;
+                      }
+                    }
+                    resource.errored = true;
+                  };
+
+                  // Prefer direct URL to preserve animated GIF behavior in canvas draws.
+                  img.src = src.trim();
+                  imageCache.set(src, resource);
+                  return resource;
+                }
+
+                function imageNaturalSize(resource) {
+                  const img = resource.img;
+                  return {
+                    width: img.naturalWidth || img.width || 0,
+                    height: img.naturalHeight || img.height || 0
+                  };
+                }
+
+                function resolveRenderSize(node, naturalWidth, naturalHeight) {
+                  const hasWidth = Number(node.width) > 0;
+                  const hasHeight = Number(node.height) > 0;
+                  const width = node.autoWidth ? naturalWidth : (hasWidth ? Number(node.width) : naturalWidth);
+                  const height = node.autoHeight ? naturalHeight : (hasHeight ? Number(node.height) : naturalHeight);
+                  return {
+                    width: Math.max(0, width),
+                    height: Math.max(0, height)
+                  };
+                }
+
+                function warmupResources() {
+                  for (const node of IMAGE_NODES) {
+                    getImageResource(node.src);
+                  }
+
+                  for (const node of BACKGROUND_NODES) {
+                    if (node && node.tileImage && node.tileImage.src) {
+                      getImageResource(node.tileImage.src);
+                    }
+                  }
+                }
+
+                function resolveNodeSurfaceSize(node) {
+                  const width = node.autoWidth ? CANVAS_W : Math.max(0, Number(node.width) || 0);
+                  const height = node.autoHeight ? CANVAS_H : Math.max(0, Number(node.height) || 0);
+                  return { width, height };
+                }
+
+                function buildBackgroundNodes() {
+                  backgroundLayerElement.innerHTML = "";
+
+                  for (const node of BACKGROUND_NODES) {
+                    if (!node) {
+                      continue;
+                    }
+
+                    const surface = resolveNodeSurfaceSize(node);
+                    if (surface.width <= 0 || surface.height <= 0) {
+                      continue;
+                    }
+
+                    const wrapper = document.createElement("div");
+                    wrapper.style.position = "absolute";
+                    wrapper.style.left = `${node.x}px`;
+                    wrapper.style.top = `${node.y}px`;
+                    wrapper.style.width = `${surface.width}px`;
+                    wrapper.style.height = `${surface.height}px`;
+                    wrapper.style.overflow = "hidden";
+                    wrapper.style.opacity = String(clamp01(node.opacity));
+                    bindClickRedirect(wrapper, node);
+
+                    if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileImage && node.tileImage.src) {
+                      const tile = document.createElement("div");
+                      tile.style.position = "absolute";
+                      tile.style.inset = "0";
+                      tile.style.backgroundRepeat = "repeat";
+
+                      const tileSrc = node.tileImage.src.trim();
+                      tile.style.backgroundImage = "url('" + encodeURI(tileSrc) + "')";
+
+                      const resource = getImageResource(tileSrc);
+                      const applyTileSize = () => {
+                        if (!resource || !resource.loaded || resource.errored) {
+                          return;
+                        }
+                        const natural = imageNaturalSize(resource);
+                        const size = resolveRenderSize(node.tileImage, natural.width, natural.height);
+                        if (size.width > 0 && size.height > 0) {
+                          tile.style.backgroundSize = `${size.width}px ${size.height}px`;
+                        }
+                      };
+
+                      if (resource && resource.loaded) {
+                        applyTileSize();
+                      } else if (resource) {
+                        resource.onLoadCallbacks.push(applyTileSize);
+                      }
+
+                      wrapper.appendChild(tile);
+                    } else if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {
+                      const tileContent = document.createElement("div");
+                      tileContent.style.position = "absolute";
+                      tileContent.style.inset = "0";
+                      tileContent.style.overflow = "hidden";
+
+                      const tileSize = resolveTextTileSize(node.tileText);
+                      for (let y = 0; y < surface.height; y += tileSize.height) {
+                        for (let x = 0; x < surface.width; x += tileSize.width) {
+                          const textTile = document.createElement("div");
+                          applyTextNodeStyles(textTile, node.tileText, tileSize.width, tileSize.height);
+                          textTile.style.left = `${x}px`;
+                          textTile.style.top = `${y}px`;
+                          tileContent.appendChild(textTile);
+                        }
+                      }
+
+                      wrapper.appendChild(tileContent);
+                    }
+
+                    backgroundLayerElement.appendChild(wrapper);
+                  }
+                }
+
+                function setupMousePointer() {
+                  if (!MOUSE_POINTER_SRC) {
+                    hasCustomMousePointer = false;
+                    mousePointerElement.style.display = "none";
+                    stageElement.style.cursor = "default";
+                    return;
+                  }
+
+                  const src = String(MOUSE_POINTER_SRC).trim();
+                  if (!src) {
+                    hasCustomMousePointer = false;
+                    mousePointerElement.style.display = "none";
+                    stageElement.style.cursor = "default";
+                    return;
+                  }
+
+                  hasCustomMousePointer = true;
+                  mousePointerElement.src = src;
+                  mousePointerElement.style.display = "block";
+                  stageElement.style.cursor = "none";
+                }
+
+                function applyPageBackgroundColor() {
+                  const color = typeof PAGE_BACKGROUND_COLOR === "string" ? PAGE_BACKGROUND_COLOR.trim() : "";
+                  if (!color) {
+                    return;
+                  }
+                  document.documentElement.style.backgroundColor = color;
+                  document.body.style.backgroundColor = color;
+                }
+
+                function buildImageNodes() {
+                  imageLayerElement.innerHTML = "";
+
+                  for (const node of IMAGE_NODES) {
+                    const resource = getImageResource(node.src);
+                    if (!resource) {
+                      continue;
+                    }
+
+                    const imageElement = document.createElement("img");
+                    imageElement.style.position = "absolute";
+                    imageElement.style.left = `${node.x}px`;
+                    imageElement.style.top = `${node.y}px`;
+                    imageElement.style.opacity = String(clamp01(node.opacity));
+                    imageElement.decoding = "async";
+                    bindClickRedirect(imageElement, node);
+
+                    const applyImageSize = () => {
+                      if (!resource.loaded || resource.errored) {
+                        return;
+                      }
+                      imageElement.src = resource.img.src;
+                      const naturalSize = imageNaturalSize(resource);
+                      const size = resolveRenderSize(node, naturalSize.width, naturalSize.height);
+                      if (size.width > 0 && size.height > 0) {
+                        imageElement.style.width = `${size.width}px`;
+                        imageElement.style.height = `${size.height}px`;
+                      }
+                    };
+
+                    if (resource.loaded) {
+                      applyImageSize();
+                    } else {
+                      resource.onLoadCallbacks.push(applyImageSize);
+                    }
+
+                    imageElement.src = resource.img.src;
+                    imageLayerElement.appendChild(imageElement);
+                  }
+                }
+
+                function buildTextNodes() {
+                  textLayerElement.innerHTML = "";
+
+                  for (const node of TEXT_NODES) {
+                    const width = Math.max(0, Number(node.width) || 0);
+                    const height = Math.max(0, Number(node.height) || 0);
+                    if (width <= 0 || height <= 0) {
+                      continue;
+                    }
+
+                    const textElement = document.createElement("div");
+                    applyTextNodeStyles(textElement, node, width, height);
+                    textElement.style.left = `${Number(node.x) || 0}px`;
+                    textElement.style.top = `${Number(node.y) || 0}px`;
+                    bindClickRedirect(textElement, node);
+                    textLayerElement.appendChild(textElement);
+                  }
+                }
+
+                function resolveTextTileSize(textNode) {
+                  const providedWidth = Math.max(0, Number(textNode.width) || 0);
+                  const providedHeight = Math.max(0, Number(textNode.height) || 0);
+                  const fontSize = Math.max(1, Number(textNode.size) || 16);
+                  const textLength = Math.max(1, String(textNode.text || "").length);
+                  const fallbackWidth = Math.ceil(fontSize * textLength * 0.6);
+                  const fallbackHeight = Math.ceil(fontSize * 1.2);
+                  return {
+                    width: Math.max(1, providedWidth || fallbackWidth),
+                    height: Math.max(1, providedHeight || fallbackHeight)
+                  };
+                }
+
+                function applyTextNodeStyles(textElement, node, width, height) {
+                  textElement.style.position = "absolute";
+                  textElement.style.width = `${Math.max(0, Number(width) || 0)}px`;
+                  textElement.style.height = `${Math.max(0, Number(height) || 0)}px`;
+                  textElement.style.opacity = String(clamp01(node.opacity));
+                  textElement.style.overflow = "hidden";
+                  textElement.style.whiteSpace = "pre-wrap";
+                  textElement.style.wordBreak = "break-word";
+                  textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+                  const textColor = typeof node.color === "string" ? node.color.trim() : "";
+                  const textAlign = typeof node.align === "string" ? node.align.trim().toLowerCase() : "";
+                  textElement.style.textAlign = (textAlign === "left" || textAlign === "right" || textAlign === "center") ? textAlign : "left";
+                  textElement.style.color = textColor || "inherit";
+                  const isTransparentBackground = node.transparentBackground !== false;
+                  const textBackgroundColor = typeof node.backgroundColor === "string" ? node.backgroundColor.trim() : "";
+                  textElement.style.backgroundColor = isTransparentBackground ? "transparent" : (textBackgroundColor || "transparent");
+                  textElement.style.fontSize = `${Math.max(1, Number(node.size) || 16)}px`;
+                  textElement.style.fontWeight = node.bold ? "700" : "400";
+                  textElement.style.fontStyle = node.italic ? "italic" : "normal";
+                  textElement.style.textTransform = node.caps ? "uppercase" : "none";
+
+                  const decorations = [];
+                  if (node.underline) {
+                    decorations.push("underline");
+                  }
+                  if (node.strikethrough) {
+                    decorations.push("line-through");
+                  }
+                  textElement.style.textDecoration = decorations.length > 0 ? decorations.join(" ") : "none";
+                  textElement.textContent = node.text || "";
+                }
+
+                function drawMousePointer() {
+                  if (mousePointerElement.style.display === "none") {
+                    return;
+                  }
+                  mousePointerElement.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+                }
+
+                function setup() {
+                  const canvas = createCanvas(CANVAS_W, CANVAS_H);
+                  canvas.parent(stageElement);
+                  stageElement.addEventListener("click", handleStageClick, true);
+                  stageElement.addEventListener("mousemove", updateStageCursor, true);
+                  stageElement.addEventListener("mouseleave", () => {
+                    if (hasCustomMousePointer) {
+                      stageElement.style.cursor = "none";
+                      mousePointerElement.style.display = "block";
+                    } else {
+                      stageElement.style.cursor = "default";
+                      mousePointerElement.style.display = "none";
+                    }
+                  });
+                  applyPageBackgroundColor();
+                  warmupResources();
+                  buildBackgroundNodes();
+                  buildImageNodes();
+                  buildTextNodes();
+                  setupMousePointer();
+
+                  if (typeof window !== "undefined") {
+                    window.addEventListener("mousemove", () => {
+                      drawMousePointer();
+                    });
+                  }
+                }
+
+                function draw() {
+                  clear();
+                  drawMousePointer();
+                }
+              </script>
+            </body>
+          </html>
