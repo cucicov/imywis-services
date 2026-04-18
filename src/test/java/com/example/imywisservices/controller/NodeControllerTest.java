@@ -696,12 +696,20 @@ public class NodeControllerTest {
                 "Generated HTML should include popup window helper."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("popupFeatures.push(`width=${Math.round(popupWidth)}`);"),
+                generatedHtml.contains("popupFeatures.push(`width=${roundedPopupWidth}`);"),
                 "Generated HTML should use popup width for popup page targets."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("popupFeatures.push(`height=${Math.round(popupHeight)}`);"),
+                generatedHtml.contains("popupFeatures.push(`height=${roundedPopupHeight}`);"),
                 "Generated HTML should use popup height for popup page targets."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("popupFeatures.push(`left=${randomLeft}`);"),
+                "Generated HTML should include randomized popup left position within viewport."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("popupFeatures.push(`top=${randomTop}`);"),
+                "Generated HTML should include randomized popup top position within viewport."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("stageElement.addEventListener(\"click\", handleStageClick, true);"),

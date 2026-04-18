@@ -117,12 +117,29 @@
 
                 function openPopupWindow(targetUrl, popupWidth, popupHeight) {
                   const popupFeatures = ["popup=yes", "noopener", "noreferrer"];
-                  if (popupWidth > 0) {
-                    popupFeatures.push(`width=${Math.round(popupWidth)}`);
+                  const roundedPopupWidth = popupWidth > 0 ? Math.round(popupWidth) : 0;
+                  const roundedPopupHeight = popupHeight > 0 ? Math.round(popupHeight) : 0;
+
+                  if (roundedPopupWidth > 0) {
+                    popupFeatures.push(`width=${roundedPopupWidth}`);
                   }
-                  if (popupHeight > 0) {
-                    popupFeatures.push(`height=${Math.round(popupHeight)}`);
+                  if (roundedPopupHeight > 0) {
+                    popupFeatures.push(`height=${roundedPopupHeight}`);
                   }
+
+                  const viewportLeft = Number(window.screenX ?? window.screenLeft ?? 0);
+                  const viewportTop = Number(window.screenY ?? window.screenTop ?? 0);
+                  const viewportWidth = Math.max(0, Number(window.innerWidth || window.outerWidth || screen.availWidth || screen.width || 0));
+                  const viewportHeight = Math.max(0, Number(window.innerHeight || window.outerHeight || screen.availHeight || screen.height || 0));
+                  const estimatedPopupWidth = roundedPopupWidth > 0 ? roundedPopupWidth : Math.round(viewportWidth * 0.7);
+                  const estimatedPopupHeight = roundedPopupHeight > 0 ? roundedPopupHeight : Math.round(viewportHeight * 0.7);
+                  const maxLeftOffset = Math.max(0, viewportWidth - Math.max(0, estimatedPopupWidth));
+                  const maxTopOffset = Math.max(0, viewportHeight - Math.max(0, estimatedPopupHeight));
+                  const randomLeft = viewportLeft + Math.floor(Math.random() * (maxLeftOffset + 1));
+                  const randomTop = viewportTop + Math.floor(Math.random() * (maxTopOffset + 1));
+                  popupFeatures.push(`left=${randomLeft}`);
+                  popupFeatures.push(`top=${randomTop}`);
+
                   return window.open(targetUrl, "_blank", popupFeatures.join(","));
                 }
 
