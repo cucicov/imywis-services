@@ -7,9 +7,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.Comparator;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -40,6 +42,8 @@ public class GraphHtmlService {
     private static final String DEFAULT_CLICK_TARGET_WINDOW = "_self";
     private static final String NEW_WINDOW_CLICK_TARGET = "_blank";
     private static final String TILE_STYLE = "tile";
+    private static final String IMAGE_DIR_NAME = "img";
+    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([\\w.+-]+/[\\w.+-]+)?(?:;[\\w.+-]+=[^;,]+)*(;base64)?,(.*)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern USER_HANDLE_SANITIZER_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
@@ -129,9 +133,10 @@ public class GraphHtmlService {
         String fileName = normalizeFileName(data.getName());
         Path outputDir = getUserOutputDir(userHandle);
         Path outputFile = outputDir.resolve(fileName);
+        Map<String, String> localImagePathCache = new HashMap<>();
 
-        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs);
-        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs);
+        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache);
+        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
 
         String html = buildHtml(
@@ -170,7 +175,10 @@ public class GraphHtmlService {
         }
     }
 
-    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata, Map<String, PageTargetConfig> pageTargetConfigs) {
+    private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata,
+                                                     Map<String, PageTargetConfig> pageTargetConfigs,
+                                                     Path outputDir,
+                                                     Map<String, String> localImagePathCache) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -180,12 +188,16 @@ public class GraphHtmlService {
                 continue;
             }
             NodeDataDTO data = node.getData();
-            if (data == null || data.getPath() == null || data.getPath().isBlank()) {
+            if (data == null) {
+                continue;
+            }
+            String imageSource = resolveImageSource(data, outputDir, localImagePathCache);
+            if (imageSource == null || imageSource.isBlank()) {
                 continue;
             }
             ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             images.add(new ImageNodePayload(
-                    data.getPath(),
+                    imageSource,
                     defaultInt(data.getPositionX()),
                     defaultInt(data.getPositionY()),
                     data.getWidth(),
@@ -206,7 +218,9 @@ public class GraphHtmlService {
     private List<BackgroundNodePayload> extractBackgroundNodes(MetadataDTO metadata,
                                                                int parentWidth,
                                                                int parentHeight,
-                                                               Map<String, PageTargetConfig> pageTargetConfigs) {
+                                                               Map<String, PageTargetConfig> pageTargetConfigs,
+                                                               Path outputDir,
+                                                               Map<String, String> localImagePathCache) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -227,7 +241,7 @@ public class GraphHtmlService {
             int width = resolveParentSizedDimension(data.getWidth(), data.getAutoWidth(), parentWidth);
             int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
             String style = data.getStyle() == null ? "" : data.getStyle().trim();
-            ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata());
+            ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata(), outputDir, localImagePathCache);
             TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), pageTargetConfigs);
             ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             double backgroundOpacity = tileImage != null
@@ -307,7 +321,9 @@ public class GraphHtmlService {
         return texts;
     }
 
-    private ImageNodePayload extractFirstImageNode(MetadataDTO metadata) {
+    private ImageNodePayload extractFirstImageNode(MetadataDTO metadata,
+                                                   Path outputDir,
+                                                   Map<String, String> localImagePathCache) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
@@ -318,12 +334,16 @@ public class GraphHtmlService {
             }
 
             NodeDataDTO data = node.getData();
-            if (data == null || data.getPath() == null || data.getPath().isBlank()) {
+            if (data == null) {
+                continue;
+            }
+            String imageSource = resolveImageSource(data, outputDir, localImagePathCache);
+            if (imageSource == null || imageSource.isBlank()) {
                 continue;
             }
 
             return new ImageNodePayload(
-                    data.getPath(),
+                    imageSource,
                     defaultInt(data.getPositionX()),
                     defaultInt(data.getPositionY()),
                     data.getWidth(),
@@ -1149,6 +1169,90 @@ public class GraphHtmlService {
             base = base + ".html";
         }
         return base;
+    }
+
+    private String resolveImageSource(NodeDataDTO data, Path outputDir, Map<String, String> localImagePathCache) throws Exception {
+        if (data == null) {
+            return "";
+        }
+
+        String localImageDataUrl = data.getLocalImageDataUrl();
+        if (localImageDataUrl != null && !localImageDataUrl.isBlank()) {
+            return saveLocalImageDataUrl(localImageDataUrl, outputDir, localImagePathCache);
+        }
+
+        String path = data.getPath();
+        return path == null ? "" : path.trim();
+    }
+
+    private String saveLocalImageDataUrl(String localImageDataUrl, Path outputDir, Map<String, String> localImagePathCache) throws Exception {
+        String normalizedDataUrl = localImageDataUrl == null ? "" : localImageDataUrl.trim();
+        if (normalizedDataUrl.isBlank()) {
+            return "";
+        }
+
+        String cachedPath = localImagePathCache.get(normalizedDataUrl);
+        if (cachedPath != null) {
+            return cachedPath;
+        }
+
+        var matcher = DATA_URL_PATTERN.matcher(normalizedDataUrl);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Invalid localImageDataUrl format. Expected a valid data URL.");
+        }
+        if (matcher.group(2) == null) {
+            throw new IllegalArgumentException("Invalid localImageDataUrl format. Missing ';base64' marker.");
+        }
+
+        String mediaType = matcher.group(1) == null ? "" : matcher.group(1).toLowerCase(Locale.ROOT);
+        String base64Payload = matcher.group(3) == null ? "" : matcher.group(3).trim();
+        if (base64Payload.isBlank()) {
+            throw new IllegalArgumentException("Invalid localImageDataUrl format. Missing Base64 payload.");
+        }
+
+        byte[] imageBytes;
+        try {
+            imageBytes = Base64.getMimeDecoder().decode(base64Payload);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid localImageDataUrl payload. Base64 decode failed.", e);
+        }
+
+        String extension = resolveImageFileExtension(mediaType);
+        String digest = sha256Hex(imageBytes);
+        String fileName = digest + extension;
+        Path imageDir = outputDir.resolve(IMAGE_DIR_NAME);
+        Path imageFile = imageDir.resolve(fileName);
+        Files.createDirectories(imageDir);
+        if (!Files.exists(imageFile)) {
+            Files.write(imageFile, imageBytes);
+        }
+
+        String relativePath = IMAGE_DIR_NAME + "/" + fileName;
+        localImagePathCache.put(normalizedDataUrl, relativePath);
+        return relativePath;
+    }
+
+    private String resolveImageFileExtension(String mediaType) {
+        return switch (mediaType) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case "image/svg+xml" -> ".svg";
+            case "image/bmp" -> ".bmp";
+            case "image/x-icon", "image/vnd.microsoft.icon" -> ".ico";
+            default -> ".bin";
+        };
+    }
+
+    private String sha256Hex(byte[] input) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(input);
+        StringBuilder hex = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            hex.append(String.format("%02x", b));
+        }
+        return hex.toString();
     }
 
     private Map<String, PageTargetConfig> collectPageTargetConfigs(List<NodeDTO> nodes) {

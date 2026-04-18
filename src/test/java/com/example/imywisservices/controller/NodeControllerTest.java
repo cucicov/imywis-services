@@ -8,9 +8,11 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -862,5 +864,77 @@ public class NodeControllerTest {
                 generatedHtml.contains("\"clickTarget\":\"aaa.html\""),
                 "Generated HTML should include click target for text node event redirect metadata."
         );
+    }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithLocalImageDataUrlUsesSavedImagePath() throws Exception {
+        String localPngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=";
+        byte[] pngBytes = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=");
+        String expectedDigest = toSha256Hex(pngBytes);
+        String expectedRelativePath = "img/" + expectedDigest + ".png";
+
+        String json = """
+                {
+                  "userHandle": "local-image-user",
+                  "nodes": [
+                    {
+                      "id": "1",
+                      "type": "pageNode",
+                      "data": {
+                        "name": "local-image-page",
+                        "metadata": {
+                          "sourceNodes": [
+                            {
+                              "type": "imageNode",
+                              "data": {
+                                "path": "https://example.com/should-not-be-used.png",
+                                "localImageDataUrl": "__LOCAL_IMAGE_DATA_URL__",
+                                "positionX": 0,
+                                "positionY": 0
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+                """.replace("__LOCAL_IMAGE_DATA_URL__", localPngDataUrl);
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1));
+
+        Path generatedFile = Path.of("generated-pages", "local-image-user", "local-image-page.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"src\":\"" + expectedRelativePath + "\""),
+                "Generated HTML should use saved local image path when localImageDataUrl is present."
+        );
+        org.junit.jupiter.api.Assertions.assertFalse(
+                generatedHtml.contains("https://example.com/should-not-be-used.png"),
+                "Generated HTML should not use remote path when localImageDataUrl is present."
+        );
+
+        Path savedImage = Path.of("generated-pages", "local-image-user", expectedRelativePath);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                Files.exists(savedImage),
+                "Generator should save localImageDataUrl content under generated-pages/{userHandle}/img."
+        );
+    }
+
+    private static String toSha256Hex(byte[] input) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(input);
+        StringBuilder hex = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            hex.append(String.format("%02x", b));
+        }
+        return hex.toString();
     }
 }

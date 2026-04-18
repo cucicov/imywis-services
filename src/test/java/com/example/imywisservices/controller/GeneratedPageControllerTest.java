@@ -8,10 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -22,12 +24,12 @@ class GeneratedPageControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    void shouldServeUserIndexPageFromTestPrefix() throws Exception {
+    void shouldServeUserIndexPageFromUserRootPath() throws Exception {
         Path userDir = Path.of("generated-pages", "alice");
         Files.createDirectories(userDir);
         Files.writeString(userDir.resolve("index.html"), "<!doctype html><html><body>alice-index</body></html>", StandardCharsets.UTF_8);
 
-        mockMvc.perform(get("/test/alice"))
+        mockMvc.perform(get("/alice"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("alice-index")));
     }
@@ -45,7 +47,20 @@ class GeneratedPageControllerTest {
 
     @Test
     void shouldReturn404WhenUserPageDoesNotExist() throws Exception {
-        mockMvc.perform(get("/test/missing-user"))
+        mockMvc.perform(get("/missing-user"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldServeUserImageAssetFromImgDirectory() throws Exception {
+        Path userImgDir = Path.of("generated-pages", "bob", "img");
+        Files.createDirectories(userImgDir);
+        byte[] pngBytes = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=");
+        Files.write(userImgDir.resolve("pixel.png"), pngBytes);
+
+        mockMvc.perform(get("/bob/img/pixel.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(content().bytes(pngBytes));
     }
 }

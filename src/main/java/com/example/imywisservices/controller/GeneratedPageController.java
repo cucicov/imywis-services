@@ -4,6 +4,7 @@ import com.example.imywisservices.service.GraphHtmlService;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +38,38 @@ public class GeneratedPageController {
             return ResponseEntity.ok(html);
         } catch (Exception e) {
             System.err.println("Error reading generated page: " + requestedPath);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping(value = "/{userHandle}/img/{assetName:.+}")
+    public ResponseEntity<byte[]> getGeneratedImageAsset(
+            @PathVariable(name = "userHandle") String userHandle,
+            @PathVariable(name = "assetName") String assetName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir(userHandle);
+        Path requestedPath = generatedPagesDir.resolve("img").resolve(assetName).normalize();
+
+        // Prevent resolving files outside the generated user asset directory.
+        if (!requestedPath.startsWith(generatedPagesDir.normalize()) || !Files.exists(requestedPath) || Files.isDirectory(requestedPath)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String lowerName = requestedPath.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            byte[] content = Files.readAllBytes(requestedPath);
+            String detectedType = Files.probeContentType(requestedPath);
+            MediaType mediaType = (detectedType == null || detectedType.isBlank())
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(detectedType);
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading generated image asset: " + requestedPath);
             return ResponseEntity.internalServerError().build();
         }
     }
