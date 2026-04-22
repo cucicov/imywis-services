@@ -485,8 +485,136 @@ public class NodeControllerTest {
                 "Generated HTML should serialize text tile payload for background nodes."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("} else if ((node.style || \"\").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {"),
+                generatedHtml.contains("} else if (nodeStyle === TILE_STYLE && node.tileText && node.tileText.text) {"),
                 "Generated HTML should render tiled text backgrounds when background node source is a text node."
+        );
+    }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithBackgroundNodeUsingFullscreenImage() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "background-fullscreen-image",
+                      "width": 640,
+                      "height": 360,
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "7",
+                            "type": "backgroundNode",
+                            "data": {
+                              "style": "fullscreen",
+                              "autoWidth": true,
+                              "autoHeight": true,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "8",
+                                    "type": "imageNode",
+                                    "data": {
+                                      "path": "https://example.com/fullscreen-bg.jpg",
+                                      "width": 100,
+                                      "height": 60
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.style").value("fullscreen"))
+                .andExpect(jsonPath("$.nodes[0].data.metadata.sourceNodes[0].data.metadata.sourceNodes[0].type").value("imageNode"));
+
+        Path generatedFile = Path.of("generated-pages", "background-fullscreen-image.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("const FULLSCREEN_STYLE = \"fullscreen\";"),
+                "Generated HTML should declare fullscreen background style constant."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("} else if (nodeStyle === FULLSCREEN_STYLE && node.tileImage && node.tileImage.src) {"),
+                "Generated HTML should render fullscreen backgrounds from image nodes."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("full.style.objectFit = \"cover\";"),
+                "Generated HTML should use cover mode for fullscreen background images."
+        );
+    }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithBackgroundNodeUsingWrappedStyleValue() throws Exception {
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "background-wrapped-style",
+                      "width": 320,
+                      "height": 220,
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "7",
+                            "type": "backgroundNode",
+                            "data": {
+                              "style": "style=\\"fullscreen\\"",
+                              "autoWidth": true,
+                              "autoHeight": true,
+                              "metadata": {
+                                "sourceNodes": [
+                                  {
+                                    "nodeId": "8",
+                                    "type": "imageNode",
+                                    "data": {
+                                      "path": "https://example.com/wrapped-style-bg.jpg",
+                                      "width": 100,
+                                      "height": 60
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1));
+
+        Path generatedFile = Path.of("generated-pages", "background-wrapped-style.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"style\":\"fullscreen\""),
+                "Generated HTML should normalize wrapped style values to fullscreen."
         );
     }
 
@@ -528,6 +656,56 @@ public class NodeControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 Files.exists(freshFile),
                 "POST /api/nodes should write the newly generated page."
+        );
+    }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithUserHandleRemovesExistingGeneratedAssetsRecursively() throws Exception {
+        Path userDir = Path.of("generated-pages", "cleanup-user");
+        Path staleHtml = userDir.resolve("stale.html");
+        Path staleImg = userDir.resolve("img").resolve("stale.png");
+        Files.createDirectories(staleImg.getParent());
+        Files.writeString(staleHtml, "<html>stale</html>", StandardCharsets.UTF_8);
+        Files.write(staleImg, new byte[]{1, 2, 3});
+
+        String json = """
+                {
+                  "userHandle": "cleanup-user",
+                  "nodes": [
+                    {
+                      "id": "1",
+                      "type": "pageNode",
+                      "data": {
+                        "name": "fresh-user-page",
+                        "width": 320,
+                        "height": 220
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1));
+
+        Path freshFile = userDir.resolve("fresh-user-page.html");
+        org.junit.jupiter.api.Assertions.assertFalse(
+                Files.exists(staleHtml),
+                "POST /api/nodes for a user handle should remove stale HTML files in that user's output directory."
+        );
+        org.junit.jupiter.api.Assertions.assertFalse(
+                Files.exists(staleImg),
+                "POST /api/nodes for a user handle should recursively remove stale assets like img files."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                Files.exists(freshFile),
+                "POST /api/nodes for a user handle should write the newly generated page after cleanup."
         );
     }
 
@@ -872,7 +1050,7 @@ public class NodeControllerTest {
         String localPngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=";
         byte[] pngBytes = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=");
         String expectedDigest = toSha256Hex(pngBytes);
-        String expectedRelativePath = "img/" + expectedDigest + ".png";
+        String expectedImagePath = "/img/local-image-user/" + expectedDigest + ".png";
 
         String json = """
                 {
@@ -913,7 +1091,7 @@ public class NodeControllerTest {
         Path generatedFile = Path.of("generated-pages", "local-image-user", "local-image-page.html");
         String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
         org.junit.jupiter.api.Assertions.assertTrue(
-                generatedHtml.contains("\"src\":\"" + expectedRelativePath + "\""),
+                generatedHtml.contains("\"src\":\"" + expectedImagePath + "\""),
                 "Generated HTML should use saved local image path when localImageDataUrl is present."
         );
         org.junit.jupiter.api.Assertions.assertFalse(
@@ -921,7 +1099,7 @@ public class NodeControllerTest {
                 "Generated HTML should not use remote path when localImageDataUrl is present."
         );
 
-        Path savedImage = Path.of("generated-pages", "local-image-user", expectedRelativePath);
+        Path savedImage = Path.of("generated-pages", "local-image-user", "img", expectedDigest + ".png");
         org.junit.jupiter.api.Assertions.assertTrue(
                 Files.exists(savedImage),
                 "Generator should save localImageDataUrl content under generated-pages/{userHandle}/img."

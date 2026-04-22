@@ -58,7 +58,25 @@ class GeneratedPageControllerTest {
         byte[] pngBytes = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=");
         Files.write(userImgDir.resolve("pixel.png"), pngBytes);
 
+        mockMvc.perform(get("/img/bob/pixel.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(content().bytes(pngBytes));
+
         mockMvc.perform(get("/bob/img/pixel.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(content().bytes(pngBytes));
+    }
+
+    @Test
+    void shouldServeRootImageAssetFromImgDirectory() throws Exception {
+        Path rootImgDir = Path.of("generated-pages", "img");
+        Files.createDirectories(rootImgDir);
+        byte[] pngBytes = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0fQAAAAASUVORK5CYII=");
+        Files.write(rootImgDir.resolve("pixel-root.png"), pngBytes);
+
+        mockMvc.perform(get("/img/pixel-root.png"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_PNG))
                 .andExpect(content().bytes(pngBytes));

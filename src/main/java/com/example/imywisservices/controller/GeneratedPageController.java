@@ -42,7 +42,7 @@ public class GeneratedPageController {
         }
     }
 
-    @GetMapping(value = "/{userHandle}/img/{assetName:.+}")
+    @GetMapping(value = {"/img/{userHandle}/{assetName:.+}", "/{userHandle}/img/{assetName:.+}"})
     public ResponseEntity<byte[]> getGeneratedImageAsset(
             @PathVariable(name = "userHandle") String userHandle,
             @PathVariable(name = "assetName") String assetName) {
@@ -70,6 +70,37 @@ public class GeneratedPageController {
                     .body(content);
         } catch (Exception e) {
             System.err.println("Error reading generated image asset: " + requestedPath);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping(value = "/img/{assetName:.+}")
+    public ResponseEntity<byte[]> getGeneratedRootImageAsset(
+            @PathVariable(name = "assetName") String assetName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir();
+        Path requestedPath = generatedPagesDir.resolve("img").resolve(assetName).normalize();
+
+        // Prevent resolving files outside the generated root asset directory.
+        if (!requestedPath.startsWith(generatedPagesDir.normalize()) || !Files.exists(requestedPath) || Files.isDirectory(requestedPath)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String lowerName = requestedPath.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            byte[] content = Files.readAllBytes(requestedPath);
+            String detectedType = Files.probeContentType(requestedPath);
+            MediaType mediaType = (detectedType == null || detectedType.isBlank())
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(detectedType);
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading generated root image asset: " + requestedPath);
             return ResponseEntity.internalServerError().build();
         }
     }

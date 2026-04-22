@@ -42,6 +42,7 @@ public class GraphHtmlService {
     private static final String DEFAULT_CLICK_TARGET_WINDOW = "_self";
     private static final String NEW_WINDOW_CLICK_TARGET = "_blank";
     private static final String TILE_STYLE = "tile";
+    private static final String FULLSCREEN_STYLE = "fullscreen";
     private static final String IMAGE_DIR_NAME = "img";
     private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([\\w.+-]+/[\\w.+-]+)?(?:;[\\w.+-]+=[^;,]+)*(;base64)?,(.*)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern USER_HANDLE_SANITIZER_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
@@ -85,6 +86,11 @@ public class GraphHtmlService {
             throw new Exception("Output path is not a directory: " + outputDir);
         }
 
+        if (userHandle != null && !userHandle.isBlank()) {
+            deleteRecursively(outputDir);
+            return;
+        }
+
         try (var stream = Files.list(outputDir)) {
             stream
                     .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".html"))
@@ -96,6 +102,24 @@ public class GraphHtmlService {
                             throw new RuntimeException("Failed to delete generated page: " + path, e);
                         }
                     });
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception ex) {
+                throw ex;
+            }
+            throw e;
+        }
+    }
+
+    private void deleteRecursively(Path root) throws Exception {
+        try (var stream = Files.walk(root)) {
+            stream.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to delete generated path: " + path, e);
+                }
+            });
         } catch (RuntimeException e) {
             Throwable cause = e.getCause();
             if (cause instanceof Exception ex) {
@@ -135,8 +159,8 @@ public class GraphHtmlService {
         Path outputFile = outputDir.resolve(fileName);
         Map<String, String> localImagePathCache = new HashMap<>();
 
-        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache);
-        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache);
+        List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache, userHandle);
+        List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
 
         String html = buildHtml(
@@ -178,7 +202,8 @@ public class GraphHtmlService {
     private List<ImageNodePayload> extractImageNodes(MetadataDTO metadata,
                                                      Map<String, PageTargetConfig> pageTargetConfigs,
                                                      Path outputDir,
-                                                     Map<String, String> localImagePathCache) throws Exception {
+                                                     Map<String, String> localImagePathCache,
+                                                     String userHandle) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -191,7 +216,7 @@ public class GraphHtmlService {
             if (data == null) {
                 continue;
             }
-            String imageSource = resolveImageSource(data, outputDir, localImagePathCache);
+            String imageSource = resolveImageSource(data, outputDir, localImagePathCache, userHandle);
             if (imageSource == null || imageSource.isBlank()) {
                 continue;
             }
@@ -220,7 +245,8 @@ public class GraphHtmlService {
                                                                int parentHeight,
                                                                Map<String, PageTargetConfig> pageTargetConfigs,
                                                                Path outputDir,
-                                                               Map<String, String> localImagePathCache) throws Exception {
+                                                               Map<String, String> localImagePathCache,
+                                                               String userHandle) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return Collections.emptyList();
         }
@@ -240,8 +266,8 @@ public class GraphHtmlService {
 
             int width = resolveParentSizedDimension(data.getWidth(), data.getAutoWidth(), parentWidth);
             int height = resolveParentSizedDimension(data.getHeight(), data.getAutoHeight(), parentHeight);
-            String style = data.getStyle() == null ? "" : data.getStyle().trim();
-            ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata(), outputDir, localImagePathCache);
+            String style = normalizeBackgroundStyle(data.getStyle());
+            ImageNodePayload tileImage = extractFirstImageNode(data.getMetadata(), outputDir, localImagePathCache, userHandle);
             TextNodePayload tileText = extractFirstTextNode(data.getMetadata(), pageTargetConfigs);
             ClickTargetPayload clickTarget = extractClickTarget(data.getMetadata(), pageTargetConfigs);
             double backgroundOpacity = tileImage != null
@@ -260,8 +286,8 @@ public class GraphHtmlService {
                     Boolean.TRUE.equals(data.getAutoWidth()),
                     Boolean.TRUE.equals(data.getAutoHeight()),
                     backgroundOpacity,
-                    TILE_STYLE.equalsIgnoreCase(style) ? tileImage : null,
-                    TILE_STYLE.equalsIgnoreCase(style) ? tileText : null,
+                    (TILE_STYLE.equals(style) || FULLSCREEN_STYLE.equals(style)) ? tileImage : null,
+                    TILE_STYLE.equals(style) ? tileText : null,
                     clickTarget != null ? clickTarget.url() : null,
                     clickTarget != null ? clickTarget.windowTarget() : null,
                     clickTarget != null && clickTarget.popup(),
@@ -323,7 +349,8 @@ public class GraphHtmlService {
 
     private ImageNodePayload extractFirstImageNode(MetadataDTO metadata,
                                                    Path outputDir,
-                                                   Map<String, String> localImagePathCache) throws Exception {
+                                                   Map<String, String> localImagePathCache,
+                                                   String userHandle) throws Exception {
         if (metadata == null || metadata.getSourceNodes() == null) {
             return null;
         }
@@ -337,7 +364,7 @@ public class GraphHtmlService {
             if (data == null) {
                 continue;
             }
-            String imageSource = resolveImageSource(data, outputDir, localImagePathCache);
+            String imageSource = resolveImageSource(data, outputDir, localImagePathCache, userHandle);
             if (imageSource == null || imageSource.isBlank()) {
                 continue;
             }
@@ -459,6 +486,7 @@ public class GraphHtmlService {
                       const CANVAS_H = __CANVAS_H__;
 
                       const TILE_STYLE = "tile";
+                      const FULLSCREEN_STYLE = "fullscreen";
                       const imageCache = new Map();
                       const stageElement = document.getElementById("stage");
                       const backgroundLayerElement = document.getElementById("background-layer");
@@ -819,6 +847,32 @@ public class GraphHtmlService {
                         return { width, height };
                       }
 
+                      function normalizeBackgroundStyle(rawStyle) {
+                        if (rawStyle == null) {
+                          return TILE_STYLE;
+                        }
+
+                        let style = String(rawStyle).trim();
+                        if (!style) {
+                          return TILE_STYLE;
+                        }
+
+                        if (style.toLowerCase().startsWith("style=")) {
+                          style = style.slice(6).trim();
+                        }
+
+                        if (style.length >= 2) {
+                          const first = style[0];
+                          const last = style[style.length - 1];
+                          if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+                            style = style.slice(1, -1).trim();
+                          }
+                        }
+
+                        style = style.toLowerCase();
+                        return style || TILE_STYLE;
+                      }
+
                       function buildBackgroundNodes() {
                         backgroundLayerElement.innerHTML = "";
 
@@ -842,7 +896,9 @@ public class GraphHtmlService {
                           wrapper.style.opacity = String(clamp01(node.opacity));
                           bindClickRedirect(wrapper, node);
 
-                          if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileImage && node.tileImage.src) {
+                          const nodeStyle = normalizeBackgroundStyle(node.style);
+
+                          if (nodeStyle === TILE_STYLE && node.tileImage && node.tileImage.src) {
                             const tile = document.createElement("div");
                             tile.style.position = "absolute";
                             tile.style.inset = "0";
@@ -870,7 +926,20 @@ public class GraphHtmlService {
                             }
 
                             wrapper.appendChild(tile);
-                          } else if ((node.style || "").toLowerCase() === TILE_STYLE && node.tileText && node.tileText.text) {
+                          } else if (nodeStyle === FULLSCREEN_STYLE && node.tileImage && node.tileImage.src) {
+                            const full = document.createElement("img");
+                            full.decoding = "async";
+                            full.src = node.tileImage.src.trim();
+                            full.alt = "";
+                            full.draggable = false;
+                            full.style.position = "absolute";
+                            full.style.inset = "0";
+                            full.style.width = "100%";
+                            full.style.height = "100%";
+                            full.style.objectFit = "cover";
+                            full.style.objectPosition = "center";
+                            wrapper.appendChild(full);
+                          } else if (nodeStyle === TILE_STYLE && node.tileText && node.tileText.text) {
                             const tileContent = document.createElement("div");
                             tileContent.style.position = "absolute";
                             tileContent.style.inset = "0";
@@ -1118,6 +1187,32 @@ public class GraphHtmlService {
         return value != null ? value : parentDimension;
     }
 
+    private String normalizeBackgroundStyle(String rawStyle) {
+        if (rawStyle == null) {
+            return TILE_STYLE;
+        }
+
+        String style = rawStyle.trim();
+        if (style.isEmpty()) {
+            return TILE_STYLE;
+        }
+
+        if (style.regionMatches(true, 0, "style=", 0, 6)) {
+            style = style.substring(6).trim();
+        }
+
+        if (style.length() >= 2) {
+            boolean wrappedInDoubleQuotes = style.startsWith("\"") && style.endsWith("\"");
+            boolean wrappedInSingleQuotes = style.startsWith("'") && style.endsWith("'");
+            if (wrappedInDoubleQuotes || wrappedInSingleQuotes) {
+                style = style.substring(1, style.length() - 1).trim();
+            }
+        }
+
+        String normalized = style.toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? TILE_STYLE : normalized;
+    }
+
     private String firstNonBlank(String... candidates) {
         if (candidates == null) {
             return "";
@@ -1171,21 +1266,27 @@ public class GraphHtmlService {
         return base;
     }
 
-    private String resolveImageSource(NodeDataDTO data, Path outputDir, Map<String, String> localImagePathCache) throws Exception {
+    private String resolveImageSource(NodeDataDTO data,
+                                      Path outputDir,
+                                      Map<String, String> localImagePathCache,
+                                      String userHandle) throws Exception {
         if (data == null) {
             return "";
         }
 
         String localImageDataUrl = data.getLocalImageDataUrl();
         if (localImageDataUrl != null && !localImageDataUrl.isBlank()) {
-            return saveLocalImageDataUrl(localImageDataUrl, outputDir, localImagePathCache);
+            return saveLocalImageDataUrl(localImageDataUrl, outputDir, localImagePathCache, userHandle);
         }
 
         String path = data.getPath();
         return path == null ? "" : path.trim();
     }
 
-    private String saveLocalImageDataUrl(String localImageDataUrl, Path outputDir, Map<String, String> localImagePathCache) throws Exception {
+    private String saveLocalImageDataUrl(String localImageDataUrl,
+                                         Path outputDir,
+                                         Map<String, String> localImagePathCache,
+                                         String userHandle) throws Exception {
         String normalizedDataUrl = localImageDataUrl == null ? "" : localImageDataUrl.trim();
         if (normalizedDataUrl.isBlank()) {
             return "";
@@ -1227,9 +1328,23 @@ public class GraphHtmlService {
             Files.write(imageFile, imageBytes);
         }
 
-        String relativePath = IMAGE_DIR_NAME + "/" + fileName;
-        localImagePathCache.put(normalizedDataUrl, relativePath);
-        return relativePath;
+        String imageAssetPath = buildImageAssetPath(fileName, userHandle);
+        localImagePathCache.put(normalizedDataUrl, imageAssetPath);
+        return imageAssetPath;
+    }
+
+    private String buildImageAssetPath(String fileName, String userHandle) {
+        String safeFileName = fileName == null ? "" : fileName.trim();
+        if (safeFileName.isBlank()) {
+            return "";
+        }
+
+        String sanitizedUserHandle = sanitizeUserHandle(userHandle);
+        if (sanitizedUserHandle == null) {
+            return "/" + IMAGE_DIR_NAME + "/" + safeFileName;
+        }
+
+        return "/" + IMAGE_DIR_NAME + "/" + sanitizedUserHandle + "/" + safeFileName;
     }
 
     private String resolveImageFileExtension(String mediaType) {
