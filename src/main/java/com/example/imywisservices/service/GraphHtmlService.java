@@ -17,11 +17,14 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,9 @@ public class GraphHtmlService {
     private static final String TILE_STYLE = "tile";
     private static final String FULLSCREEN_STYLE = "fullscreen";
     private static final String IMAGE_DIR_NAME = "img";
+    private static final String RESOURCES_DIR_NAME = "resources";
+    private static final String FONTS_DIR_NAME = "fonts";
+    private static final Set<String> FONT_FILE_EXTENSIONS = Set.of(".ttf", ".otf", ".woff", ".woff2");
     private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([\\w.+-]+/[\\w.+-]+)?(?:;[\\w.+-]+=[^;,]+)*(;base64)?,(.*)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern USER_HANDLE_SANITIZER_PATTERN = Pattern.compile("[^a-zA-Z0-9._-]");
 
@@ -60,6 +66,7 @@ public class GraphHtmlService {
         }
 
         String userHandle = sanitizeUserHandle(graph.getUserHandle());
+        ensureSharedResourcesDirs();
         clearGeneratedPages(userHandle);
         lastGeneratedFile.set(null);
 
@@ -162,6 +169,7 @@ public class GraphHtmlService {
         List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
+        Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, outputDir, userHandle);
 
         String html = buildHtml(
                 canvasWidth,
@@ -170,7 +178,8 @@ public class GraphHtmlService {
                 data.getMousePointer(),
                 toJson(backgrounds),
                 toJson(images),
-                toJson(texts)
+                toJson(texts),
+                toJson(fontAssets)
         );
 
         Files.createDirectories(outputDir);
@@ -440,7 +449,8 @@ public class GraphHtmlService {
                              String mousePointer,
                              String backgroundJson,
                              String imagesJson,
-                             String textJson) {
+                             String textJson,
+                             String fontAssetsJson) {
         String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String template = """
@@ -480,6 +490,7 @@ public class GraphHtmlService {
                       const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
                       const TEXT_NODES = __TEXT_NODES__;
+                      const FONT_ASSETS = __FONT_ASSETS__;
                       const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
                       const CANVAS_W = __CANVAS_W__;
@@ -495,6 +506,79 @@ public class GraphHtmlService {
                       const mousePointerElement = document.getElementById("mouse-pointer");
                       const clickableBindings = [];
                       let hasCustomMousePointer = false;
+
+                      function normalizeFontValue(value) {
+                        let fontValue = String(value || "").trim();
+                        if (!fontValue) {
+                          return "";
+                        }
+                        if (fontValue.toLowerCase().startsWith("font=")) {
+                          fontValue = fontValue.slice(5).trim();
+                        }
+                        if (fontValue.length >= 2) {
+                          const first = fontValue[0];
+                          const last = fontValue[fontValue.length - 1];
+                          if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+                            fontValue = fontValue.slice(1, -1).trim();
+                          }
+                        }
+                        const lower = fontValue.toLowerCase();
+                        const supportedExtensions = [".ttf", ".otf", ".woff", ".woff2"];
+                        for (const extension of supportedExtensions) {
+                          if (lower.endsWith(extension)) {
+                            fontValue = fontValue.slice(0, -extension.length).trim();
+                            break;
+                          }
+                        }
+                        return fontValue;
+                      }
+
+                      function normalizeFontKey(value) {
+                        return normalizeFontValue(value)
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, "");
+                      }
+
+                      function isDefaultFont(fontName) {
+                        return normalizeFontValue(fontName).toLowerCase() === "default";
+                      }
+
+                      function registerFontFaces() {
+                        if (!FONT_ASSETS || typeof FONT_ASSETS !== "object") {
+                          return;
+                        }
+                        const styleElement = document.createElement("style");
+                        const declarations = [];
+                        for (const key of Object.keys(FONT_ASSETS)) {
+                          const asset = FONT_ASSETS[key];
+                          if (!asset || !asset.family || !asset.src) {
+                            continue;
+                          }
+                          declarations.push("@font-face { font-family: '" + String(asset.family).replace(/'/g, "\\\\'") + "'; src: url('" + encodeURI(asset.src) + "'); font-display: swap; }");
+                        }
+                        if (declarations.length <= 0) {
+                          return;
+                        }
+                        styleElement.textContent = declarations.join("\\n");
+                        document.head.appendChild(styleElement);
+                      }
+
+                      function resolveTextFontFamily(nodeFont) {
+                        const normalizedRequestedFont = normalizeFontValue(nodeFont);
+                        const requestedFont = normalizedRequestedFont || "sans-serif";
+                        if (isDefaultFont(requestedFont)) {
+                          return requestedFont;
+                        }
+                        const requestedFontKey = normalizeFontKey(requestedFont);
+                        if (!requestedFontKey || !FONT_ASSETS || typeof FONT_ASSETS !== "object") {
+                          return requestedFont;
+                        }
+                        const direct = FONT_ASSETS[requestedFontKey];
+                        if (direct && direct.family) {
+                          return `'${String(direct.family).replace(/'/g, "\\\\'")}', ${requestedFont}`;
+                        }
+                        return requestedFont;
+                      }
 
                       function resolveClickTarget(node) {
                         if (!node || typeof node.clickTarget !== "string") {
@@ -842,6 +926,10 @@ public class GraphHtmlService {
                       }
 
                       function resolveNodeSurfaceSize(node) {
+                        const nodeStyle = normalizeBackgroundStyle(node && node.style);
+                        if (nodeStyle === FULLSCREEN_STYLE) {
+                          return { width: CANVAS_W, height: CANVAS_H };
+                        }
                         const width = node.autoWidth ? CANVAS_W : Math.max(0, Number(node.width) || 0);
                         const height = node.autoHeight ? CANVAS_H : Math.max(0, Number(node.height) || 0);
                         return { width, height };
@@ -888,15 +976,15 @@ public class GraphHtmlService {
 
                           const wrapper = document.createElement("div");
                           wrapper.style.position = "absolute";
-                          wrapper.style.left = `${node.x}px`;
-                          wrapper.style.top = `${node.y}px`;
+                          const nodeStyle = normalizeBackgroundStyle(node.style);
+                          const isFullscreen = nodeStyle === FULLSCREEN_STYLE;
+                          wrapper.style.left = `${isFullscreen ? 0 : node.x}px`;
+                          wrapper.style.top = `${isFullscreen ? 0 : node.y}px`;
                           wrapper.style.width = `${surface.width}px`;
                           wrapper.style.height = `${surface.height}px`;
                           wrapper.style.overflow = "hidden";
                           wrapper.style.opacity = String(clamp01(node.opacity));
                           bindClickRedirect(wrapper, node);
-
-                          const nodeStyle = normalizeBackgroundStyle(node.style);
 
                           if (nodeStyle === TILE_STYLE && node.tileImage && node.tileImage.src) {
                             const tile = document.createElement("div");
@@ -1075,7 +1163,7 @@ public class GraphHtmlService {
                         textElement.style.overflow = "hidden";
                         textElement.style.whiteSpace = "pre-wrap";
                         textElement.style.wordBreak = "break-word";
-                        textElement.style.fontFamily = (node.font || "sans-serif").trim() || "sans-serif";
+                        textElement.style.fontFamily = resolveTextFontFamily(node.font);
                         const textColor = typeof node.color === "string" ? node.color.trim() : "";
                         const textAlign = typeof node.align === "string" ? node.align.trim().toLowerCase() : "";
                         textElement.style.textAlign = (textAlign === "left" || textAlign === "right" || textAlign === "center") ? textAlign : "left";
@@ -1121,6 +1209,7 @@ public class GraphHtmlService {
                           }
                         });
                         applyPageBackgroundColor();
+                        registerFontFaces();
                         warmupResources();
                         buildBackgroundNodes();
                         buildImageNodes();
@@ -1147,6 +1236,7 @@ public class GraphHtmlService {
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)
+                .replace("__FONT_ASSETS__", fontAssetsJson)
                 .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
                 .replace("__CANVAS_W__", String.valueOf(canvasWidth))
@@ -1254,6 +1344,18 @@ public class GraphHtmlService {
         return sanitized.isBlank() ? null : sanitized;
     }
 
+    private Path getSharedResourcesDir() {
+        return Paths.get(RESOURCES_DIR_NAME);
+    }
+
+    private Path getFontsDir() {
+        return getSharedResourcesDir().resolve(FONTS_DIR_NAME);
+    }
+
+    private void ensureSharedResourcesDirs() throws Exception {
+        Files.createDirectories(getFontsDir());
+    }
+
     private String normalizeFileName(String name) {
         String trimmed = name.trim();
         String base = trimmed.replaceAll("[^a-zA-Z0-9._-]", "_");
@@ -1264,6 +1366,181 @@ public class GraphHtmlService {
             base = base + ".html";
         }
         return base;
+    }
+
+    private Map<String, FontAssetPayload> packFontAssetsForPage(List<TextNodePayload> texts,
+                                                                List<BackgroundNodePayload> backgrounds,
+                                                                Path outputDir,
+                                                                String userHandle) {
+        Map<String, Path> sourceFonts = collectSourceFontFiles();
+        if (sourceFonts.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Set<String> requestedFontKeys = new LinkedHashSet<>();
+        if (texts != null) {
+            for (TextNodePayload textNode : texts) {
+                addRequestedFontKey(requestedFontKeys, textNode != null ? textNode.getFont() : null);
+            }
+        }
+        if (backgrounds != null) {
+            for (BackgroundNodePayload background : backgrounds) {
+                if (background == null || background.tileText == null) {
+                    continue;
+                }
+                addRequestedFontKey(requestedFontKeys, background.tileText.getFont());
+            }
+        }
+
+        if (requestedFontKeys.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Path generatedFontsDir = outputDir.resolve(FONTS_DIR_NAME);
+        Map<String, FontAssetPayload> fontAssets = new LinkedHashMap<>();
+        for (String key : requestedFontKeys) {
+            Path sourceFile = sourceFonts.get(key);
+            if (sourceFile == null || Files.isDirectory(sourceFile)) {
+                continue;
+            }
+
+            String fileName = sourceFile.getFileName().toString();
+            Path targetFile = generatedFontsDir.resolve(fileName);
+            try {
+                Files.createDirectories(generatedFontsDir);
+                Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e) {
+                continue;
+            }
+
+            fontAssets.put(key, new FontAssetPayload(
+                    fileNameWithoutExtension(fileName),
+                    buildFontAssetPath(fileName, userHandle)
+            ));
+        }
+
+        return fontAssets;
+    }
+
+    private void addRequestedFontKey(Set<String> targetKeys, String rawFontValue) {
+        String normalizedInput = normalizeFontInputValue(rawFontValue);
+        if (normalizedInput.isBlank() || isDefaultFontName(normalizedInput)) {
+            return;
+        }
+        String requestedKey = normalizeFontKey(normalizedInput);
+        if (!requestedKey.isBlank()) {
+            targetKeys.add(requestedKey);
+        }
+    }
+
+    private Map<String, Path> collectSourceFontFiles() {
+        Path fontsDir = getFontsDir();
+        if (!Files.isDirectory(fontsDir)) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Path> fontSources = new LinkedHashMap<>();
+        try (var stream = Files.list(fontsDir)) {
+            stream
+                    .filter(Files::isRegularFile)
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT)))
+                    .forEach(path -> {
+                        String fileName = path.getFileName().toString();
+                        String extension = fileNameExtension(fileName);
+                        if (!FONT_FILE_EXTENSIONS.contains(extension)) {
+                            return;
+                        }
+
+                        String baseName = fileNameWithoutExtension(fileName);
+                        String key = normalizeFontKey(baseName);
+                        if (key.isBlank() || fontSources.containsKey(key)) {
+                            return;
+                        }
+
+                        fontSources.put(key, path);
+                    });
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+
+        return fontSources;
+    }
+
+    private String fileNameExtension(String fileName) {
+        int dot = fileName == null ? -1 : fileName.lastIndexOf('.');
+        if (dot < 0) {
+            return "";
+        }
+        return fileName.substring(dot).toLowerCase(Locale.ROOT);
+    }
+
+    private String fileNameWithoutExtension(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            return "";
+        }
+        int dot = fileName.lastIndexOf('.');
+        if (dot <= 0) {
+            return fileName;
+        }
+        return fileName.substring(0, dot);
+    }
+
+    private String normalizeFontKey(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String normalizedValue = normalizeFontInputValue(value);
+        return normalizedValue.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private String normalizeFontInputValue(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+
+        if (normalized.regionMatches(true, 0, "font=", 0, 5)) {
+            normalized = normalized.substring(5).trim();
+        }
+
+        if (normalized.length() >= 2) {
+            boolean wrappedInDoubleQuotes = normalized.startsWith("\"") && normalized.endsWith("\"");
+            boolean wrappedInSingleQuotes = normalized.startsWith("'") && normalized.endsWith("'");
+            if (wrappedInDoubleQuotes || wrappedInSingleQuotes) {
+                normalized = normalized.substring(1, normalized.length() - 1).trim();
+            }
+        }
+
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        for (String extension : FONT_FILE_EXTENSIONS) {
+            if (lower.endsWith(extension)) {
+                return normalized.substring(0, normalized.length() - extension.length()).trim();
+            }
+        }
+
+        return normalized;
+    }
+
+    private boolean isDefaultFontName(String fontName) {
+        return fontName != null && "default".equalsIgnoreCase(fontName.trim());
+    }
+
+    private String buildFontAssetPath(String fileName, String userHandle) {
+        String safeFileName = fileName == null ? "" : fileName.trim();
+        if (safeFileName.isBlank()) {
+            return "";
+        }
+
+        String sanitizedUserHandle = sanitizeUserHandle(userHandle);
+        if (sanitizedUserHandle == null) {
+            return "/" + FONTS_DIR_NAME + "/" + safeFileName;
+        }
+
+        return "/" + FONTS_DIR_NAME + "/" + sanitizedUserHandle + "/" + safeFileName;
     }
 
     private String resolveImageSource(NodeDataDTO data,
@@ -1509,6 +1786,9 @@ public class GraphHtmlService {
     }
 
     private record PageTargetConfig(boolean popup, int width, int height) {
+    }
+
+    private record FontAssetPayload(String family, String src) {
     }
 
     private static class BackgroundNodePayload {

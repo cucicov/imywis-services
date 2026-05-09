@@ -81,4 +81,32 @@ class GeneratedPageControllerTest {
                 .andExpect(content().contentType(MediaType.IMAGE_PNG))
                 .andExpect(content().bytes(pngBytes));
     }
+
+    @Test
+    void shouldServeRootFontAssetFromFontsDirectory() throws Exception {
+        Path fontsDir = Path.of("generated-pages", "fonts");
+        Files.createDirectories(fontsDir);
+        byte[] fontBytes = "fake-font-binary".getBytes(StandardCharsets.UTF_8);
+        Files.write(fontsDir.resolve("DemoFont.ttf"), fontBytes);
+
+        mockMvc.perform(get("/fonts/DemoFont.ttf"))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(fontBytes));
+    }
+
+    @Test
+    void shouldServeUserFontAssetFromFontsDirectory() throws Exception {
+        Path fontsDir = Path.of("generated-pages", "bob", "fonts");
+        Files.createDirectories(fontsDir);
+        byte[] fontBytes = "user-font-binary".getBytes(StandardCharsets.UTF_8);
+        Files.write(fontsDir.resolve("UserFont.ttf"), fontBytes);
+
+        mockMvc.perform(get("/fonts/bob/UserFont.ttf"))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(fontBytes));
+
+        mockMvc.perform(get("/bob/fonts/UserFont.ttf"))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(fontBytes));
+    }
 }

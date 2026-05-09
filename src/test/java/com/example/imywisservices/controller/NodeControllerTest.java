@@ -554,6 +554,19 @@ public class NodeControllerTest {
                 "Generated HTML should render fullscreen backgrounds from image nodes."
         );
         org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("if (nodeStyle === FULLSCREEN_STYLE) {")
+                        && generatedHtml.contains("return { width: CANVAS_W, height: CANVAS_H };"),
+                "Generated HTML should force fullscreen background node surface to match canvas size."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("wrapper.style.left = `${isFullscreen ? 0 : node.x}px`;"),
+                "Generated HTML should ignore background node X position for fullscreen style."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("wrapper.style.top = `${isFullscreen ? 0 : node.y}px`;"),
+                "Generated HTML should ignore background node Y position for fullscreen style."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("full.style.objectFit = \"cover\";"),
                 "Generated HTML should use cover mode for fullscreen background images."
         );
@@ -1041,6 +1054,73 @@ public class NodeControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 generatedHtml.contains("\"clickTarget\":\"aaa.html\""),
                 "Generated HTML should include click target for text node event redirect metadata."
+        );
+    }
+
+    @Test
+    @WithMockUser
+    public void testProcessNodesUsesFontAssetsFromResourcesDirectory() throws Exception {
+        Path fontsDir = Path.of("resources", "fonts");
+        Files.createDirectories(fontsDir);
+        Files.writeString(fontsDir.resolve("My Font.ttf"), "font-bytes", StandardCharsets.UTF_8);
+
+        String json = """
+                [
+                  {
+                    "id": "1",
+                    "type": "pageNode",
+                    "data": {
+                      "name": "font-assets-page",
+                      "width": 320,
+                      "height": 220,
+                      "metadata": {
+                        "sourceNodes": [
+                          {
+                            "nodeId": "7",
+                            "type": "textNode",
+                            "data": {
+                              "text": "Hello font",
+                              "font": "My Font",
+                              "size": "20",
+                              "width": 140,
+                              "height": 50,
+                              "positionX": "20",
+                              "positionY": "30"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.nodes.length()").value(1));
+
+        Path generatedFile = Path.of("generated-pages", "font-assets-page.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("const FONT_ASSETS ="),
+                "Generated HTML should include serialized font assets from resources directory."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("\"myfont\":{\"family\":\"My Font\",\"src\":\"/fonts/My Font.ttf\"}"),
+                "Generated HTML should map text font names to generated project font paths."
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(
+                generatedHtml.contains("textElement.style.fontFamily = resolveTextFontFamily(node.font);"),
+                "Generated HTML should resolve text node fonts through loaded resource fonts."
+        );
+        Path packedFont = Path.of("generated-pages", "fonts", "My Font.ttf");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                Files.exists(packedFont),
+                "Generator should pack matched fonts into generated-pages/fonts."
         );
     }
 

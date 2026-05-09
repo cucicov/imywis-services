@@ -105,6 +105,69 @@ public class GeneratedPageController {
         }
     }
 
+    @GetMapping(value = {"/fonts/{userHandle}/{assetName:.+}", "/{userHandle}/fonts/{assetName:.+}"})
+    public ResponseEntity<byte[]> getGeneratedFontAsset(
+            @PathVariable(name = "userHandle") String userHandle,
+            @PathVariable(name = "assetName") String assetName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir(userHandle);
+        Path requestedPath = generatedPagesDir.resolve("fonts").resolve(assetName).normalize();
+
+        // Prevent resolving files outside the generated user font directory.
+        if (!requestedPath.startsWith(generatedPagesDir.normalize()) || !Files.exists(requestedPath) || Files.isDirectory(requestedPath)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String lowerName = requestedPath.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            byte[] content = Files.readAllBytes(requestedPath);
+            String detectedType = Files.probeContentType(requestedPath);
+            MediaType mediaType = (detectedType == null || detectedType.isBlank())
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(detectedType);
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading generated font asset: " + requestedPath);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping(value = "/fonts/{assetName:.+}")
+    public ResponseEntity<byte[]> getGeneratedRootFontAsset(
+            @PathVariable(name = "assetName") String assetName) {
+        Path generatedPagesDir = graphHtmlService.getGeneratedPagesDir();
+        Path requestedPath = generatedPagesDir.resolve("fonts").resolve(assetName).normalize();
+
+        // Prevent resolving files outside the generated root font directory.
+        if (!requestedPath.startsWith(generatedPagesDir.normalize()) || !Files.exists(requestedPath) || Files.isDirectory(requestedPath)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String lowerName = requestedPath.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            byte[] content = Files.readAllBytes(requestedPath);
+            String detectedType = Files.probeContentType(requestedPath);
+            MediaType mediaType = (detectedType == null || detectedType.isBlank())
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(detectedType);
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading generated root font asset: " + requestedPath);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getLandingMessage() {
         return ResponseEntity.ok("I'll miss you when I scroll");
