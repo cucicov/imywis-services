@@ -3,6 +3,7 @@ package com.example.imywisservices.service;
 import com.example.imywisservices.dto.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,6 +28,8 @@ import java.util.Set;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -55,6 +58,7 @@ public class GraphHtmlService {
 
     private final AtomicReference<Path> lastGeneratedFile = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final PathMatchingResourcePatternResolver resourceResolver = new PathMatchingResourcePatternResolver();
 
     public void generatePages(GraphDTO graph) throws Exception {
         if (graph == null || graph.getNodes() == null) {
@@ -1434,33 +1438,71 @@ public class GraphHtmlService {
     }
 
     private Map<String, Path> collectSourceFontFiles() {
-        Path fontsDir = getFontsDir();
-        if (!Files.isDirectory(fontsDir)) {
-            return Collections.emptyMap();
-        }
-
         Map<String, Path> fontSources = new LinkedHashMap<>();
-        try (var stream = Files.list(fontsDir)) {
-            stream
-                    .filter(Files::isRegularFile)
-                    .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT)))
-                    .forEach(path -> {
-                        String fileName = path.getFileName().toString();
-                        String extension = fileNameExtension(fileName);
-                        if (!FONT_FILE_EXTENSIONS.contains(extension)) {
-                            return;
-                        }
 
-                        String baseName = fileNameWithoutExtension(fileName);
-                        String key = normalizeFontKey(baseName);
-                        if (key.isBlank() || fontSources.containsKey(key)) {
-                            return;
-                        }
+        try {
+            // Load fonts from classpath resources
+            Resource[] fontResources = resourceResolver.getResources("classpath:fonts/*");
 
-                        fontSources.put(key, path);
-                    });
+            for (Resource resource : fontResources) {
+                if (!resource.exists() || !resource.isReadable()) {
+                    continue;
+                }
+
+                String fileName = resource.getFilename();
+                if (fileName == null || fileName.isBlank()) {
+                    continue;
+                }
+
+                String extension = fileNameExtension(fileName);
+                if (!FONT_FILE_EXTENSIONS.contains(extension)) {
+                    continue;
+                }
+
+                String baseName = fileNameWithoutExtension(fileName);
+                String key = normalizeFontKey(baseName);
+                if (key.isBlank() || fontSources.containsKey(key)) {
+                    continue;
+                }
+
+                // Copy font from classpath to shared fonts directory if needed
+                Path targetFontPath = getFontsDir().resolve(fileName);
+                if (!Files.exists(targetFontPath)) {
+                    Files.createDirectories(getFontsDir());
+                    try (InputStream inputStream = resource.getInputStream()) {
+                        Files.copy(inputStream, targetFontPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+
+                fontSources.put(key, targetFontPath);
+            }
         } catch (Exception e) {
-            return Collections.emptyMap();
+            // Fallback: try to read from file system (for backwards compatibility)
+            Path fontsDir = getFontsDir();
+            if (Files.isDirectory(fontsDir)) {
+                try (var stream = Files.list(fontsDir)) {
+                    stream
+                            .filter(Files::isRegularFile)
+                            .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT)))
+                            .forEach(path -> {
+                                String fileName = path.getFileName().toString();
+                                String extension = fileNameExtension(fileName);
+                                if (!FONT_FILE_EXTENSIONS.contains(extension)) {
+                                    return;
+                                }
+
+                                String baseName = fileNameWithoutExtension(fileName);
+                                String key = normalizeFontKey(baseName);
+                                if (key.isBlank() || fontSources.containsKey(key)) {
+                                    return;
+                                }
+
+                                fontSources.put(key, path);
+                            });
+                } catch (Exception ex) {
+                    // Ignore fallback errors
+                }
+            }
         }
 
         return fontSources;
