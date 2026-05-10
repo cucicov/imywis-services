@@ -174,6 +174,7 @@ public class GraphHtmlService {
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
         Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, outputDir, userHandle);
+        copyFaviconToUserDir(outputDir, userHandle);
 
         String html = buildHtml(
                 canvasWidth,
@@ -183,7 +184,8 @@ public class GraphHtmlService {
                 toJson(backgrounds),
                 toJson(images),
                 toJson(texts),
-                toJson(fontAssets)
+                toJson(fontAssets),
+                userHandle
         );
 
         Files.createDirectories(outputDir);
@@ -454,16 +456,19 @@ public class GraphHtmlService {
                              String backgroundJson,
                              String imagesJson,
                              String textJson,
-                             String fontAssetsJson) {
+                             String fontAssetsJson,
+                             String userHandle) {
         String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
+        String pageTitle = (userHandle != null && !userHandle.isBlank()) ? userHandle : "Generated Page";
         String template = """
                 <!doctype html>
                 <html lang="en">
                   <head>
                     <meta charset="utf-8"/>
                     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-                    <title>Generated Page</title>
+                    <title>__PAGE_TITLE__</title>
+                    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
                     <style>
                       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
                       #stage { position: relative; width: __CANVAS_W__px; height: __CANVAS_H__px; overflow: hidden; }
@@ -1237,6 +1242,7 @@ public class GraphHtmlService {
                 """;
 
         return template
+                .replace("__PAGE_TITLE__", pageTitle)
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)
@@ -1358,6 +1364,42 @@ public class GraphHtmlService {
 
     private void ensureSharedResourcesDirs() throws Exception {
         Files.createDirectories(getFontsDir());
+        ensureFavicon();
+    }
+
+    private void ensureFavicon() throws Exception {
+        Path sharedFaviconPath = Paths.get(RESOURCES_DIR_NAME).resolve("favicon.ico");
+        if (!Files.exists(sharedFaviconPath)) {
+            // Try to copy from classpath resources
+            try {
+                Resource faviconResource = resourceResolver.getResource("classpath:favicon.ico");
+                if (faviconResource.exists() && faviconResource.isReadable()) {
+                    Files.createDirectories(sharedFaviconPath.getParent());
+                    try (InputStream inputStream = faviconResource.getInputStream()) {
+                        Files.copy(inputStream, sharedFaviconPath, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            } catch (Exception e) {
+                // Favicon is optional, continue if not found
+            }
+        }
+    }
+
+    private void copyFaviconToUserDir(Path outputDir, String userHandle) throws Exception {
+        try {
+            Resource faviconResource = resourceResolver.getResource("classpath:favicon.ico");
+            if (!faviconResource.exists() || !faviconResource.isReadable()) {
+                return;
+            }
+
+            Path targetFavicon = outputDir.resolve("favicon.ico");
+            Files.createDirectories(outputDir);
+            try (InputStream inputStream = faviconResource.getInputStream()) {
+                Files.copy(inputStream, targetFavicon, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (Exception e) {
+            // Favicon is optional, continue if not found
+        }
     }
 
     private String normalizeFileName(String name) {
