@@ -37,3 +37,4 @@ build/
 prompts.txt
 
 generated-pages/**
+.env.local

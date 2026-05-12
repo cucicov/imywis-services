@@ -35,6 +35,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class GraphHtmlService {
 
+    private final UserProfileService userProfileService;
+
+    public GraphHtmlService(UserProfileService userProfileService) {
+        this.userProfileService = userProfileService;
+    }
+
     private static final int DEFAULT_CANVAS_WIDTH = 800;
     private static final int DEFAULT_CANVAS_HEIGHT = 600;
     private static final String OUTPUT_DIR_NAME = "generated-pages";
@@ -67,6 +73,16 @@ public class GraphHtmlService {
 
         if (graph.getNodes().isEmpty()) {
             throw new Exception("No nodes found in the graph");
+        }
+
+        // Check user authorization
+        String userId = graph.getUserId();
+        if (userId == null || userId.isBlank()) {
+            throw new Exception("User ID is required to generate pages");
+        }
+
+        if (!userProfileService.userExists(userId)) {
+            throw new Exception("Unauthorized: User ID not found in user_profiles");
         }
 
         String userHandle = sanitizeUserHandle(graph.getUserHandle());
