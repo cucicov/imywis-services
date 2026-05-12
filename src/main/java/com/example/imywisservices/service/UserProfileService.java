@@ -49,6 +49,28 @@ public class UserProfileService {
         }
     }
 
+    public String getMainPageHandle() {
+        if (!supabaseClient.isConfigured()) {
+            return null;
+        }
+
+        try {
+            String filter = "select=handle&main_page=eq.true&limit=1";
+            List<UserProfile> profiles = supabaseClient
+                    .get("user_profiles", filter, UserProfileList.class)
+                    .block();
+
+            if (profiles != null && !profiles.isEmpty()) {
+                return profiles.get(0).getHandle();
+            }
+            return null;
+        } catch (Exception e) {
+            System.err.println("Error fetching main page handle: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserProfile {

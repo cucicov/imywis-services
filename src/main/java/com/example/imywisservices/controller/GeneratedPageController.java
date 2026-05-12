@@ -1,10 +1,12 @@
 package com.example.imywisservices.controller;
 
 import com.example.imywisservices.service.GraphHtmlService;
+import com.example.imywisservices.service.UserProfileService;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class GeneratedPageController {
 
     private final GraphHtmlService graphHtmlService;
+    private final UserProfileService userProfileService;
 
-    public GeneratedPageController(GraphHtmlService graphHtmlService) {
+    public GeneratedPageController(GraphHtmlService graphHtmlService, UserProfileService userProfileService) {
         this.graphHtmlService = graphHtmlService;
+        this.userProfileService = userProfileService;
     }
 
     @GetMapping(value = {"/{userHandle}", "/{userHandle}/{pageName:.+\\.html}"},
@@ -185,8 +189,16 @@ public class GeneratedPageController {
         }
     }
 
-    @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> getLandingMessage() {
-        return ResponseEntity.ok("I'll miss you when I scroll");
+    @GetMapping(value = "/")
+    public ResponseEntity<Void> getLandingMessage() {
+        String mainPageHandle = userProfileService.getMainPageHandle();
+        if (mainPageHandle != null && !mainPageHandle.isBlank()) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header("Location", "/" + mainPageHandle)
+                    .build();
+        }
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header("Location", "/cucicov")
+                .build();
     }
 }
