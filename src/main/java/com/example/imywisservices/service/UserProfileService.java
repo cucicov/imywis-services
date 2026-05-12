@@ -27,8 +27,8 @@ public class UserProfileService {
         }
 
         try {
-            // For UUID columns in Supabase, use select parameter with filter
-            String filter = "user_id=eq." + userId.trim();
+            // Only select user_id to minimize data transfer
+            String filter = "select=user_id&user_id=eq." + userId.trim();
             List<UserProfile> profiles = supabaseClient
                     .get("user_profiles", filter, UserProfileList.class)
                     .block();

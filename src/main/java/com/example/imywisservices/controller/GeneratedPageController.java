@@ -168,6 +168,23 @@ public class GeneratedPageController {
         }
     }
 
+    @GetMapping(value = "/favicon.ico")
+    public ResponseEntity<byte[]> getFavicon() {
+        try {
+            Path faviconPath = Path.of("src/main/resources/static/favicon.ico");
+            if (!Files.exists(faviconPath)) {
+                return ResponseEntity.notFound().build();
+            }
+            byte[] content = Files.readAllBytes(faviconPath);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.valueOf("image/x-icon"))
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading favicon: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping(value = "/", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getLandingMessage() {
         return ResponseEntity.ok("I'll miss you when I scroll");
