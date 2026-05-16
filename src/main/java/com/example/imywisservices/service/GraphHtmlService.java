@@ -483,6 +483,14 @@ public class GraphHtmlService {
                     <meta charset="utf-8"/>
                     <meta name="viewport" content="width=device-width, initial-scale=1"/>
                     <title>__PAGE_TITLE__</title>
+                    <meta property="og:title" content="__PAGE_TITLE__"/>
+                    <meta property="og:description" content="illmissyouwhenIscroll.net (IMYWIS) - spațiu expozițional online de new media art"/>
+                    <meta property="og:image" content="/logo-big.png"/>
+                    <meta property="og:type" content="website"/>
+                    <meta name="twitter:card" content="summary_large_image"/>
+                    <meta name="twitter:title" content="__PAGE_TITLE__"/>
+                    <meta name="twitter:description" content="illmissyouwhenIscroll.net (IMYWIS) - spațiu expozițional online de new media art"/>
+                    <meta name="twitter:image" content="/logo-big.png"/>
                     <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
                     <script defer src="https://cloud.umami.is/script.js" data-website-id="be8e008e-c617-4bb6-9c04-22abce6c86f9"></script>
                     <style>

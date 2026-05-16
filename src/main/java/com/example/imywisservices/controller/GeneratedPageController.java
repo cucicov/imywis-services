@@ -189,6 +189,23 @@ public class GeneratedPageController {
         }
     }
 
+    @GetMapping(value = "/logo-big.png")
+    public ResponseEntity<byte[]> getLogoBig() {
+        try {
+            Path logoPath = Path.of("src/main/resources/static/logo-big.png");
+            if (!Files.exists(logoPath)) {
+                return ResponseEntity.notFound().build();
+            }
+            byte[] content = Files.readAllBytes(logoPath);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(content);
+        } catch (Exception e) {
+            System.err.println("Error reading logo-big.png: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping(value = "/")
     public ResponseEntity<Void> getLandingMessage() {
         String mainPageHandle = userProfileService.getMainPageHandle();
