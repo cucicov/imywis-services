@@ -191,6 +191,7 @@ public class GraphHtmlService {
         Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, outputDir, userHandle);
         copyFaviconToUserDir(outputDir, userHandle);
 
+        boolean showPopup = userProfileService.shouldShowAboutPopup(userHandle);
         String html = buildHtml(
                 canvasWidth,
                 canvasHeight,
@@ -200,7 +201,8 @@ public class GraphHtmlService {
                 toJson(images),
                 toJson(texts),
                 toJson(fontAssets),
-                userHandle
+                userHandle,
+                showPopup
         );
 
         Files.createDirectories(outputDir);
@@ -472,7 +474,8 @@ public class GraphHtmlService {
                              String imagesJson,
                              String textJson,
                              String fontAssetsJson,
-                             String userHandle) {
+                             String userHandle,
+                             boolean showPopup) {
         String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String pageTitle = (userHandle != null && !userHandle.isBlank()) ? userHandle : "Generated Page";
@@ -1294,7 +1297,9 @@ public class GraphHtmlService {
                         buildImageNodes();
                         buildTextNodes();
                         setupMousePointer();
-                        showWeb1Popup();
+                        if (__SHOW_POPUP__) {
+                          showWeb1Popup();
+                        }
 
                         if (typeof window !== "undefined") {
                           window.addEventListener("mousemove", () => {
@@ -1315,6 +1320,7 @@ public class GraphHtmlService {
         return template
                 .replace("__PAGE_TITLE__", pageTitle)
                 .replace("__BASE_URL__", baseUrl)
+                .replace("__SHOW_POPUP__", String.valueOf(showPopup))
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)

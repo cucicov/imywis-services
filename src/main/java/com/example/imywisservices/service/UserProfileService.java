@@ -71,6 +71,37 @@ public class UserProfileService {
         }
     }
 
+    public boolean shouldShowAboutPopup(String handle) {
+        if (handle == null || handle.isBlank()) {
+            return false;
+        }
+
+        if (!supabaseClient.isConfigured()) {
+            // If Supabase is not configured, show popup by default (for development)
+            return true;
+        }
+
+        try {
+            String filter = "select=about_popup&handle=eq." + handle.trim();
+            List<UserProfile> profiles = supabaseClient
+                    .get("user_profiles", filter, UserProfileList.class)
+                    .block();
+
+            if (profiles != null && !profiles.isEmpty()) {
+                Boolean aboutPopup = profiles.get(0).getAboutPopup();
+                // If about_popup is null or true, show the popup. Only hide if explicitly false.
+                return aboutPopup == null || aboutPopup;
+            }
+            // If user not found, don't show popup
+            return false;
+        } catch (Exception e) {
+            System.err.println("Error fetching about_popup for handle " + handle + ": " + e.getMessage());
+            e.printStackTrace();
+            // On error, don't show popup to be safe
+            return false;
+        }
+    }
+
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserProfile {
@@ -82,6 +113,9 @@ public class UserProfileService {
 
         @JsonProperty("data")
         private Object data;
+
+        @JsonProperty("about_popup")
+        private Boolean aboutPopup;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
