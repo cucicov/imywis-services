@@ -2,10 +2,12 @@ package com.example.imywisservices.controller;
 
 import com.example.imywisservices.service.GraphHtmlService;
 import com.example.imywisservices.service.UserProfileService;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -134,6 +136,8 @@ public class GeneratedPageController {
                     : MediaType.parseMediaType(detectedType);
             return ResponseEntity.ok()
                     .contentType(mediaType)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Cache-Control", "public, max-age=31536000")
                     .body(content);
         } catch (Exception e) {
             System.err.println("Error reading generated font asset: " + requestedPath);
@@ -165,6 +169,8 @@ public class GeneratedPageController {
                     : MediaType.parseMediaType(detectedType);
             return ResponseEntity.ok()
                     .contentType(mediaType)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Cache-Control", "public, max-age=31536000")
                     .body(content);
         } catch (Exception e) {
             System.err.println("Error reading generated root font asset: " + requestedPath);
@@ -175,14 +181,16 @@ public class GeneratedPageController {
     @GetMapping(value = "/favicon.svg")
     public ResponseEntity<byte[]> getFavicon() {
         try {
-            Path faviconPath = Path.of("src/main/resources/static/favicon.svg");
-            if (!Files.exists(faviconPath)) {
+            ClassPathResource resource = new ClassPathResource("static/favicon.svg");
+            if (!resource.exists()) {
                 return ResponseEntity.notFound().build();
             }
-            byte[] content = Files.readAllBytes(faviconPath);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.valueOf("image/svg+xml"))
-                    .body(content);
+            try (InputStream is = resource.getInputStream()) {
+                byte[] content = is.readAllBytes();
+                return ResponseEntity.ok()
+                        .contentType(MediaType.valueOf("image/svg+xml"))
+                        .body(content);
+            }
         } catch (Exception e) {
             System.err.println("Error reading favicon: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -192,14 +200,16 @@ public class GeneratedPageController {
     @GetMapping(value = "/logo-big.png")
     public ResponseEntity<byte[]> getLogoBig() {
         try {
-            Path logoPath = Path.of("src/main/resources/static/logo-big.png");
-            if (!Files.exists(logoPath)) {
+            ClassPathResource resource = new ClassPathResource("static/logo-big.png");
+            if (!resource.exists()) {
                 return ResponseEntity.notFound().build();
             }
-            byte[] content = Files.readAllBytes(logoPath);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.IMAGE_PNG)
-                    .body(content);
+            try (InputStream is = resource.getInputStream()) {
+                byte[] content = is.readAllBytes();
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_PNG)
+                        .body(content);
+            }
         } catch (Exception e) {
             System.err.println("Error reading logo-big.png: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
