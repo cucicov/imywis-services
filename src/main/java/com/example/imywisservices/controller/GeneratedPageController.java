@@ -181,12 +181,22 @@ public class GeneratedPageController {
     @GetMapping(value = "/favicon.svg")
     public ResponseEntity<byte[]> getFavicon() {
         try {
-            ClassPathResource resource = new ClassPathResource("static/favicon.svg");
-            System.out.println("Attempting to load favicon.svg from classpath, exists: " + resource.exists());
+            // Try multiple possible paths
+            ClassPathResource resource = new ClassPathResource("/static/favicon.svg");
             if (!resource.exists()) {
-                System.err.println("favicon.svg not found in classpath");
+                resource = new ClassPathResource("static/favicon.svg");
+            }
+            if (!resource.exists()) {
+                resource = new ClassPathResource("/favicon.svg");
+            }
+
+            System.out.println("Attempting to load favicon.svg, path: " + resource.getPath() + ", exists: " + resource.exists());
+
+            if (!resource.exists()) {
+                System.err.println("favicon.svg not found in any classpath location");
                 return ResponseEntity.notFound().build();
             }
+
             try (InputStream is = resource.getInputStream()) {
                 byte[] content = is.readAllBytes();
                 System.out.println("Successfully loaded favicon.svg, size: " + content.length + " bytes");
@@ -205,12 +215,22 @@ public class GeneratedPageController {
     @GetMapping(value = "/favicon.ico")
     public ResponseEntity<byte[]> getFaviconIco() {
         try {
-            ClassPathResource resource = new ClassPathResource("static/favicon.ico");
-            System.out.println("Attempting to load favicon.ico from classpath, exists: " + resource.exists());
+            // Try multiple possible paths
+            ClassPathResource resource = new ClassPathResource("/static/favicon.ico");
             if (!resource.exists()) {
-                System.err.println("favicon.ico not found in classpath");
+                resource = new ClassPathResource("static/favicon.ico");
+            }
+            if (!resource.exists()) {
+                resource = new ClassPathResource("/favicon.ico");
+            }
+
+            System.out.println("Attempting to load favicon.ico, path: " + resource.getPath() + ", exists: " + resource.exists());
+
+            if (!resource.exists()) {
+                System.err.println("favicon.ico not found in any classpath location");
                 return ResponseEntity.notFound().build();
             }
+
             try (InputStream is = resource.getInputStream()) {
                 byte[] content = is.readAllBytes();
                 System.out.println("Successfully loaded favicon.ico, size: " + content.length + " bytes");
@@ -229,18 +249,33 @@ public class GeneratedPageController {
     @GetMapping(value = "/logo-big.png")
     public ResponseEntity<byte[]> getLogoBig() {
         try {
-            ClassPathResource resource = new ClassPathResource("static/logo-big.png");
+            // Try multiple possible paths
+            ClassPathResource resource = new ClassPathResource("/static/logo-big.png");
             if (!resource.exists()) {
+                resource = new ClassPathResource("static/logo-big.png");
+            }
+            if (!resource.exists()) {
+                resource = new ClassPathResource("/logo-big.png");
+            }
+
+            System.out.println("Attempting to load logo-big.png, path: " + resource.getPath() + ", exists: " + resource.exists());
+
+            if (!resource.exists()) {
+                System.err.println("logo-big.png not found in any classpath location");
                 return ResponseEntity.notFound().build();
             }
+
             try (InputStream is = resource.getInputStream()) {
                 byte[] content = is.readAllBytes();
+                System.out.println("Successfully loaded logo-big.png, size: " + content.length + " bytes");
                 return ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_PNG)
+                        .header("Cache-Control", "public, max-age=86400")
                         .body(content);
             }
         } catch (Exception e) {
             System.err.println("Error reading logo-big.png: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
