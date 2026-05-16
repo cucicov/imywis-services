@@ -532,6 +532,49 @@ public class GraphHtmlService {
                       const clickableBindings = [];
                       let hasCustomMousePointer = false;
 
+                      function showWeb1Popup() {
+                        const popupShown = localStorage.getItem("imywis_popup_shown");
+                        if (popupShown === "true") {
+                          return;
+                        }
+
+                        const overlay = document.createElement("div");
+                        overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;";
+
+                        const popup = document.createElement("div");
+                        popup.style.cssText = "background:#c0c0c0;border:4px outset #dfdfdf;padding:4px;max-width:500px;font-family:'MS Sans Serif',Arial,sans-serif;font-size:11px;box-shadow:8px 8px 0 rgba(0,0,0,0.5);";
+
+                        const titleBar = document.createElement("div");
+                        titleBar.style.cssText = "background:linear-gradient(to right,#000080,#1084d0);color:white;padding:3px 5px;font-weight:bold;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;";
+                        titleBar.innerHTML = '<span>IMYWIS</span><button style="background:#c0c0c0;border:2px outset #dfdfdf;width:18px;height:18px;font-size:12px;font-weight:bold;cursor:pointer;padding:0;">X</button>';
+
+                        const content = document.createElement("div");
+                        content.style.cssText = "background:white;border:2px inset #dfdfdf;padding:15px;margin-bottom:4px;";
+                        content.innerHTML = '<p style="margin:0 0 15px 0;line-height:1.5;">illmissyouwhenIscroll.net (IMYWIS) este un spațiu expozițional online ce va găzdui în perioada mai – octombrie 2026 șase lucrări de new media art care marchează tranziția actuală a Internetului de la web 1.0 la web 4.0.</p>';
+
+                        const buttonBar = document.createElement("div");
+                        buttonBar.style.cssText = "text-align:center;padding:4px;";
+                        const button = document.createElement("button");
+                        button.style.cssText = "background:#c0c0c0;border:2px outset #dfdfdf;padding:4px 20px;font-family:'MS Sans Serif',Arial,sans-serif;font-size:11px;cursor:pointer;min-width:100px;";
+                        button.textContent = "află mai multe";
+                        button.onmouseover = function() { this.style.background = "#e0e0e0"; };
+                        button.onmouseout = function() { this.style.background = "#c0c0c0"; };
+                        button.onclick = function() { window.location.href = "/about"; };
+                        buttonBar.appendChild(button);
+
+                        popup.appendChild(titleBar);
+                        popup.appendChild(content);
+                        popup.appendChild(buttonBar);
+                        overlay.appendChild(popup);
+                        document.body.appendChild(overlay);
+
+                        const closeBtn = titleBar.querySelector("button");
+                        closeBtn.onclick = function() {
+                          localStorage.setItem("imywis_popup_shown", "true");
+                          document.body.removeChild(overlay);
+                        };
+                      }
+
                       function normalizeFontValue(value) {
                         let fontValue = String(value || "").trim();
                         if (!fontValue) {
@@ -1240,6 +1283,7 @@ public class GraphHtmlService {
                         buildImageNodes();
                         buildTextNodes();
                         setupMousePointer();
+                        showWeb1Popup();
 
                         if (typeof window !== "undefined") {
                           window.addEventListener("mousemove", () => {
