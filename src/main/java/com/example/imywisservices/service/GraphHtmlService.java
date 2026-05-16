@@ -493,7 +493,7 @@ public class GraphHtmlService {
                     <meta name="twitter:description" content="illmissyouwhenIscroll.net (IMYWIS) - spațiu expozițional online de new media art"/>
                     <meta name="twitter:image" content="__BASE_URL__/logo-big.png"/>
                     <link rel="icon" type="image/svg+xml" href="__BASE_URL__/favicon.svg"/>
-                    <link rel="alternate icon" type="image/png" href="__BASE_URL__/favicon.png"/>
+                    <link rel="alternate icon" type="image/png" href="__BASE_URL__/logo-big.png"/>
                     <link rel="shortcut icon" href="__BASE_URL__/favicon.ico"/>
                     <script defer src="https://cloud.umami.is/script.js" data-website-id="be8e008e-c617-4bb6-9c04-22abce6c86f9"></script>
                     <style>
