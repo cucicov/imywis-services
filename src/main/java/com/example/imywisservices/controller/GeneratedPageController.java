@@ -182,17 +182,46 @@ public class GeneratedPageController {
     public ResponseEntity<byte[]> getFavicon() {
         try {
             ClassPathResource resource = new ClassPathResource("static/favicon.svg");
+            System.out.println("Attempting to load favicon.svg from classpath, exists: " + resource.exists());
             if (!resource.exists()) {
+                System.err.println("favicon.svg not found in classpath");
                 return ResponseEntity.notFound().build();
             }
             try (InputStream is = resource.getInputStream()) {
                 byte[] content = is.readAllBytes();
+                System.out.println("Successfully loaded favicon.svg, size: " + content.length + " bytes");
                 return ResponseEntity.ok()
                         .contentType(MediaType.valueOf("image/svg+xml"))
+                        .header("Cache-Control", "public, max-age=86400")
                         .body(content);
             }
         } catch (Exception e) {
-            System.err.println("Error reading favicon: " + e.getMessage());
+            System.err.println("Error reading favicon.svg: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping(value = "/favicon.ico")
+    public ResponseEntity<byte[]> getFaviconIco() {
+        try {
+            ClassPathResource resource = new ClassPathResource("static/favicon.ico");
+            System.out.println("Attempting to load favicon.ico from classpath, exists: " + resource.exists());
+            if (!resource.exists()) {
+                System.err.println("favicon.ico not found in classpath");
+                return ResponseEntity.notFound().build();
+            }
+            try (InputStream is = resource.getInputStream()) {
+                byte[] content = is.readAllBytes();
+                System.out.println("Successfully loaded favicon.ico, size: " + content.length + " bytes");
+                return ResponseEntity.ok()
+                        .contentType(MediaType.valueOf("image/x-icon"))
+                        .header("Cache-Control", "public, max-age=86400")
+                        .body(content);
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading favicon.ico: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }
