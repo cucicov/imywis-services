@@ -280,35 +280,35 @@ public class GeneratedPageController {
         }
     }
 
-    @GetMapping(value = "/favicon.png")
+    @GetMapping(value = "/fav.png")
     public ResponseEntity<byte[]> getFaviconPng() {
         try {
             // Try multiple possible paths
-            ClassPathResource resource = new ClassPathResource("/static/favicon.png");
+            ClassPathResource resource = new ClassPathResource("/static/fav.png");
             if (!resource.exists()) {
-                resource = new ClassPathResource("static/favicon.png");
+                resource = new ClassPathResource("static/fav.png");
             }
             if (!resource.exists()) {
-                resource = new ClassPathResource("/favicon.png");
+                resource = new ClassPathResource("/fav.png");
             }
 
-            System.out.println("Attempting to load favicon.png, path: " + resource.getPath() + ", exists: " + resource.exists());
+            System.out.println("Attempting to load fav.png, path: " + resource.getPath() + ", exists: " + resource.exists());
 
             if (!resource.exists()) {
-                System.err.println("favicon.png not found in any classpath location");
+                System.err.println("fav.png not found in any classpath location");
                 return ResponseEntity.notFound().build();
             }
 
             try (InputStream is = resource.getInputStream()) {
                 byte[] content = is.readAllBytes();
-                System.out.println("Successfully loaded favicon.png, size: " + content.length + " bytes");
+                System.out.println("Successfully loaded fav.png, size: " + content.length + " bytes");
                 return ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_PNG)
                         .header("Cache-Control", "public, max-age=86400")
                         .body(content);
             }
         } catch (Exception e) {
-            System.err.println("Error reading favicon.png: " + e.getMessage());
+            System.err.println("Error reading fav.png: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
