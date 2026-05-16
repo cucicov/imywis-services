@@ -172,16 +172,16 @@ public class GeneratedPageController {
         }
     }
 
-    @GetMapping(value = "/favicon.ico")
+    @GetMapping(value = "/favicon.svg")
     public ResponseEntity<byte[]> getFavicon() {
         try {
-            Path faviconPath = Path.of("src/main/resources/static/favicon.ico");
+            Path faviconPath = Path.of("src/main/resources/static/favicon.svg");
             if (!Files.exists(faviconPath)) {
                 return ResponseEntity.notFound().build();
             }
             byte[] content = Files.readAllBytes(faviconPath);
             return ResponseEntity.ok()
-                    .contentType(MediaType.valueOf("image/x-icon"))
+                    .contentType(MediaType.valueOf("image/svg+xml"))
                     .body(content);
         } catch (Exception e) {
             System.err.println("Error reading favicon: " + e.getMessage());

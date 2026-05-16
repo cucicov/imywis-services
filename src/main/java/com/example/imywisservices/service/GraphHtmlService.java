@@ -16,7 +16,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -484,7 +483,8 @@ public class GraphHtmlService {
                     <meta charset="utf-8"/>
                     <meta name="viewport" content="width=device-width, initial-scale=1"/>
                     <title>__PAGE_TITLE__</title>
-                    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+                    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+                    <script defer src="https://cloud.umami.is/script.js" data-website-id="be8e008e-c617-4bb6-9c04-22abce6c86f9"></script>
                     <style>
                       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
                       #stage { position: relative; width: __CANVAS_W__px; height: __CANVAS_H__px; overflow: hidden; }
@@ -1384,11 +1384,11 @@ public class GraphHtmlService {
     }
 
     private void ensureFavicon() throws Exception {
-        Path sharedFaviconPath = Paths.get(RESOURCES_DIR_NAME).resolve("favicon.ico");
+        Path sharedFaviconPath = Paths.get(RESOURCES_DIR_NAME).resolve("static/favicon.svg");
         if (!Files.exists(sharedFaviconPath)) {
             // Try to copy from classpath resources
             try {
-                Resource faviconResource = resourceResolver.getResource("classpath:favicon.ico");
+                Resource faviconResource = resourceResolver.getResource("classpath:favicon.svg");
                 if (faviconResource.exists() && faviconResource.isReadable()) {
                     Files.createDirectories(sharedFaviconPath.getParent());
                     try (InputStream inputStream = faviconResource.getInputStream()) {
@@ -1403,12 +1403,12 @@ public class GraphHtmlService {
 
     private void copyFaviconToUserDir(Path outputDir, String userHandle) throws Exception {
         try {
-            Resource faviconResource = resourceResolver.getResource("classpath:favicon.ico");
+            Resource faviconResource = resourceResolver.getResource("classpath:favicon.svg");
             if (!faviconResource.exists() || !faviconResource.isReadable()) {
                 return;
             }
 
-            Path targetFavicon = outputDir.resolve("favicon.ico");
+            Path targetFavicon = outputDir.resolve("static/favicon.svg");
             Files.createDirectories(outputDir);
             try (InputStream inputStream = faviconResource.getInputStream()) {
                 Files.copy(inputStream, targetFavicon, StandardCopyOption.REPLACE_EXISTING);
