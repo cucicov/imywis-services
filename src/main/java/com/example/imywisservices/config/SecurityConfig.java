@@ -37,7 +37,9 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "https://imywis.vercel.app",
                 "https://builder.beautifulneon.xyz/",
-                "https://builder.illmissyouwheniscroll.net/"
+                "https://builder.illmissyouwheniscroll.net/",
+                "https://www.illmissyouwheniscroll.net",
+                "https://illmissyouwheniscroll.net"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
