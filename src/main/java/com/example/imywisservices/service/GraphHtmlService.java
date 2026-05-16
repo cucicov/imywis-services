@@ -476,6 +476,7 @@ public class GraphHtmlService {
         String safeBackgroundColor = backgroundColor == null ? "" : backgroundColor;
         String safeMousePointer = mousePointer == null ? "" : mousePointer;
         String pageTitle = (userHandle != null && !userHandle.isBlank()) ? userHandle : "Generated Page";
+        String baseUrl = System.getenv("BASE_URL") != null ? System.getenv("BASE_URL") : "https://www.illmissyouwheniscroll.net";
         String template = """
                 <!doctype html>
                 <html lang="en">
@@ -485,13 +486,13 @@ public class GraphHtmlService {
                     <title>__PAGE_TITLE__</title>
                     <meta property="og:title" content="__PAGE_TITLE__"/>
                     <meta property="og:description" content="illmissyouwhenIscroll.net (IMYWIS) - spațiu expozițional online de new media art"/>
-                    <meta property="og:image" content="/logo-big.png"/>
+                    <meta property="og:image" content="__BASE_URL__/logo-big.png"/>
                     <meta property="og:type" content="website"/>
                     <meta name="twitter:card" content="summary_large_image"/>
                     <meta name="twitter:title" content="__PAGE_TITLE__"/>
                     <meta name="twitter:description" content="illmissyouwhenIscroll.net (IMYWIS) - spațiu expozițional online de new media art"/>
-                    <meta name="twitter:image" content="/logo-big.png"/>
-                    <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+                    <meta name="twitter:image" content="__BASE_URL__/logo-big.png"/>
+                    <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
                     <script defer src="https://cloud.umami.is/script.js" data-website-id="be8e008e-c617-4bb6-9c04-22abce6c86f9"></script>
                     <style>
                       html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff; }
@@ -1311,6 +1312,7 @@ public class GraphHtmlService {
 
         return template
                 .replace("__PAGE_TITLE__", pageTitle)
+                .replace("__BASE_URL__", baseUrl)
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)
