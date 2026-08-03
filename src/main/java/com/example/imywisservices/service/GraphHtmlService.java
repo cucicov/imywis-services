@@ -49,6 +49,7 @@ public class GraphHtmlService {
     private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
     private static final String TEXT_NODE_TYPE = "textNode";
     private static final String EVENT_NODE_TYPE = "eventNode";
+    private static final String MASK_NODE_TYPE = "maskNode";
     private static final String EXTERNAL_LINK_NODE_TYPE = "externalLinkNode";
     private static final String DEFAULT_CLICK_TARGET_WINDOW = "_self";
     private static final String NEW_WINDOW_CLICK_TARGET = "_blank";
@@ -188,7 +189,8 @@ public class GraphHtmlService {
         List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
-        Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, outputDir, userHandle);
+        List<MaskNodePayload> masks = extractMaskNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
+        Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, masks, outputDir, userHandle);
         copyFaviconToUserDir(outputDir, userHandle);
 
         boolean showPopup = userProfileService.shouldShowAboutPopup(userHandle);
@@ -200,6 +202,7 @@ public class GraphHtmlService {
                 toJson(backgrounds),
                 toJson(images),
                 toJson(texts),
+                toJson(masks),
                 toJson(fontAssets),
                 userHandle,
                 showPopup
@@ -379,6 +382,86 @@ public class GraphHtmlService {
         return texts;
     }
 
+    private List<MaskNodePayload> extractMaskNodes(MetadataDTO metadata,
+                                                   Map<String, PageTargetConfig> pageTargetConfigs,
+                                                   Path outputDir,
+                                                   Map<String, String> localImagePathCache,
+                                                   String userHandle) throws Exception {
+        if (metadata == null || metadata.getSourceNodes() == null) {
+            return Collections.emptyList();
+        }
+
+        List<MaskNodePayload> masks = new ArrayList<>();
+        for (NodeDTO maskNode : metadata.getSourceNodes()) {
+            if (maskNode == null || !MASK_NODE_TYPE.equals(maskNode.getType()) || maskNode.getData() == null) {
+                continue;
+            }
+            NodeDataDTO maskData = maskNode.getData();
+            MetadataDTO childMetadata = maskData.getMetadata();
+            if (childMetadata == null || childMetadata.getSourceNodes() == null) {
+                continue;
+            }
+
+            NodeDTO child = childMetadata.getSourceNodes().stream()
+                    .filter(Objects::nonNull)
+                    .filter(node -> IMAGE_NODE_TYPE.equals(node.getType()) || TEXT_NODE_TYPE.equals(node.getType()))
+                    .findFirst()
+                    .orElse(null);
+            if (child == null || child.getData() == null) {
+                continue;
+            }
+
+            NodeDataDTO childData = child.getData();
+            int x = defaultInt(maskData.getPositionX());
+            int y = defaultInt(maskData.getPositionY());
+            Integer maskWidth = positiveIntOrNull(maskData.getWidth());
+            Integer maskHeight = positiveIntOrNull(maskData.getHeight());
+            String maskBackgroundColor = firstNonBlank(maskData.getBackgroundColor(), "#ffffff");
+
+            if (IMAGE_NODE_TYPE.equals(child.getType())) {
+                String imageSource = resolveImageSource(childData, outputDir, localImagePathCache, userHandle);
+                if (imageSource == null || imageSource.isBlank()) {
+                    continue;
+                }
+                ClickTargetPayload clickTarget = extractClickTarget(childData.getMetadata(), pageTargetConfigs);
+                ImageNodePayload image = new ImageNodePayload(
+                        imageSource, 0, 0, childData.getWidth(), childData.getHeight(),
+                        Boolean.TRUE.equals(childData.getAutoWidth()), Boolean.TRUE.equals(childData.getAutoHeight()),
+                        childData.getOpacity() != null ? childData.getOpacity() : 1.0,
+                        clickTarget != null ? clickTarget.url() : null,
+                        clickTarget != null ? clickTarget.windowTarget() : null,
+                        clickTarget != null && clickTarget.popup(),
+                        clickTarget != null ? clickTarget.popupWidth() : null,
+                        clickTarget != null ? clickTarget.popupHeight() : null
+                );
+                masks.add(new MaskNodePayload(x, y, maskWidth, maskHeight, maskBackgroundColor, IMAGE_NODE_TYPE, image, null));
+                continue;
+            }
+
+            if (childData.getText() == null || childData.getText().isBlank()) {
+                continue;
+            }
+            ClickTargetPayload clickTarget = extractClickTarget(childData.getMetadata(), pageTargetConfigs);
+            TextNodePayload text = new TextNodePayload(
+                    childData.getText(), childData.getColor(), childData.getAlign(), childData.getBackgroundColor(),
+                    !Boolean.FALSE.equals(childData.getTransparentBackground()), firstNonBlank(childData.getFont(), "sans-serif"),
+                    positiveIntOrDefault(childData.getSize(), 16), positiveIntOrDefault(childData.getWidth(), 0),
+                    positiveIntOrDefault(childData.getHeight(), 0), 0, 0,
+                    childData.getOpacity() != null ? childData.getOpacity() : 1.0,
+                    Boolean.TRUE.equals(childData.getBold()), Boolean.TRUE.equals(childData.getItalic()),
+                    Boolean.TRUE.equals(childData.getUnderline()), Boolean.TRUE.equals(childData.getStrikethrough()),
+                    Boolean.TRUE.equals(childData.getCaps()),
+                    clickTarget != null ? clickTarget.url() : null,
+                    clickTarget != null ? clickTarget.windowTarget() : null,
+                    clickTarget != null && clickTarget.popup(),
+                    clickTarget != null ? clickTarget.popupWidth() : null,
+                    clickTarget != null ? clickTarget.popupHeight() : null
+            );
+            masks.add(new MaskNodePayload(x, y, maskWidth, maskHeight, maskBackgroundColor, TEXT_NODE_TYPE, null, text));
+        }
+        return masks;
+    }
+
     private ImageNodePayload extractFirstImageNode(MetadataDTO metadata,
                                                    Path outputDir,
                                                    Map<String, String> localImagePathCache,
@@ -473,6 +556,7 @@ public class GraphHtmlService {
                              String backgroundJson,
                              String imagesJson,
                              String textJson,
+                             String masksJson,
                              String fontAssetsJson,
                              String userHandle,
                              boolean showPopup) {
@@ -505,12 +589,13 @@ public class GraphHtmlService {
                       #background-layer { position: absolute; inset: 0; z-index: 0; }
                       #image-layer { position: absolute; inset: 0; z-index: 1; }
                       #text-layer { position: absolute; inset: 0; z-index: 2; }
-                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
+                      #mask-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+                      canvas { display: block; position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; }
                       #mouse-pointer {
                         position: absolute;
                         left: 0;
                         top: 0;
-                        z-index: 4;
+                        z-index: 5;
                         pointer-events: none;
                         display: none;
                         transform: translate(0px, 0px);
@@ -523,12 +608,14 @@ public class GraphHtmlService {
                       <div id="background-layer"></div>
                       <div id="image-layer"></div>
                       <div id="text-layer"></div>
+                      <div id="mask-layer"></div>
                       <img id="mouse-pointer" alt="mouse-pointer"/>
                     </div>
                     <script>
                       const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
                       const TEXT_NODES = __TEXT_NODES__;
+                      const MASK_NODES = __MASK_NODES__;
                       const FONT_ASSETS = __FONT_ASSETS__;
                       const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
@@ -542,6 +629,7 @@ public class GraphHtmlService {
                       const backgroundLayerElement = document.getElementById("background-layer");
                       const imageLayerElement = document.getElementById("image-layer");
                       const textLayerElement = document.getElementById("text-layer");
+                      const maskLayerElement = document.getElementById("mask-layer");
                       const mousePointerElement = document.getElementById("mouse-pointer");
                       const clickableBindings = [];
                       let hasCustomMousePointer = false;
@@ -1224,6 +1312,81 @@ public class GraphHtmlService {
                         }
                       }
 
+                      function buildMaskNodes() {
+                        maskLayerElement.innerHTML = "";
+                        for (const mask of MASK_NODES) {
+                          if (!mask) {
+                            continue;
+                          }
+                          const wrapper = document.createElement("div");
+                          wrapper.style.position = "absolute";
+                          wrapper.style.left = `${Number(mask.x) || 0}px`;
+                          wrapper.style.top = `${Number(mask.y) || 0}px`;
+                          wrapper.style.backgroundColor = typeof mask.backgroundColor === "string" && mask.backgroundColor.trim()
+                            ? mask.backgroundColor.trim()
+                            : "#ffffff";
+                          wrapper.style.overflow = "auto";
+                          wrapper.style.boxSizing = "border-box";
+                          wrapper.style.pointerEvents = "auto";
+
+                          const configuredWidth = Math.max(0, Number(mask.width) || 0);
+                          const configuredHeight = Math.max(0, Number(mask.height) || 0);
+
+                          if (mask.childType === "imageNode" && mask.image) {
+                            const node = mask.image;
+                            const resource = getImageResource(node.src);
+                            if (!resource) {
+                              continue;
+                            }
+                            const imageElement = document.createElement("img");
+                            imageElement.style.display = "block";
+                            imageElement.style.maxWidth = "none";
+                            imageElement.style.maxHeight = "none";
+                            imageElement.style.opacity = String(clamp01(node.opacity));
+                            imageElement.decoding = "async";
+                            imageElement.draggable = false;
+                            bindClickRedirect(imageElement, node);
+
+                            const applyImageSize = () => {
+                              if (!resource.loaded || resource.errored) {
+                                return;
+                              }
+                              imageElement.src = resource.img.src;
+                              const naturalSize = imageNaturalSize(resource);
+                              const size = resolveRenderSize(node, naturalSize.width, naturalSize.height);
+                              if (size.width > 0 && size.height > 0) {
+                                imageElement.style.width = `${size.width}px`;
+                                imageElement.style.height = `${size.height}px`;
+                                wrapper.style.width = `${configuredWidth || size.width}px`;
+                                wrapper.style.height = `${configuredHeight || size.height}px`;
+                              }
+                            };
+                            if (resource.loaded) {
+                              applyImageSize();
+                            } else {
+                              resource.onLoadCallbacks.push(applyImageSize);
+                            }
+                            imageElement.src = resource.img.src;
+                            wrapper.appendChild(imageElement);
+                          } else if (mask.childType === "textNode" && mask.text) {
+                            const node = mask.text;
+                            const width = Math.max(1, Number(node.width) || 1);
+                            const height = Math.max(1, Number(node.height) || 1);
+                            wrapper.style.width = `${configuredWidth || width}px`;
+                            wrapper.style.height = `${configuredHeight || height}px`;
+                            const textElement = document.createElement("div");
+                            applyTextNodeStyles(textElement, node, width, height);
+                            textElement.style.left = "0";
+                            textElement.style.top = "0";
+                            bindClickRedirect(textElement, node);
+                            wrapper.appendChild(textElement);
+                          } else {
+                            continue;
+                          }
+                          maskLayerElement.appendChild(wrapper);
+                        }
+                      }
+
                       function resolveTextTileSize(textNode) {
                         const providedWidth = Math.max(0, Number(textNode.width) || 0);
                         const providedHeight = Math.max(0, Number(textNode.height) || 0);
@@ -1296,6 +1459,7 @@ public class GraphHtmlService {
                         buildBackgroundNodes();
                         buildImageNodes();
                         buildTextNodes();
+                        buildMaskNodes();
                         setupMousePointer();
                         if (__SHOW_POPUP__) {
                           showWeb1Popup();
@@ -1324,6 +1488,7 @@ public class GraphHtmlService {
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)
+                .replace("__MASK_NODES__", masksJson)
                 .replace("__FONT_ASSETS__", fontAssetsJson)
                 .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
@@ -1356,6 +1521,10 @@ public class GraphHtmlService {
             return defaultValue;
         }
         return value;
+    }
+
+    private Integer positiveIntOrNull(Integer value) {
+        return value != null && value > 0 ? value : null;
     }
 
     private int resolveParentSizedDimension(Integer value, Boolean auto, int parentDimension) {
@@ -1494,6 +1663,7 @@ public class GraphHtmlService {
 
     private Map<String, FontAssetPayload> packFontAssetsForPage(List<TextNodePayload> texts,
                                                                 List<BackgroundNodePayload> backgrounds,
+                                                                List<MaskNodePayload> masks,
                                                                 Path outputDir,
                                                                 String userHandle) {
         Map<String, Path> sourceFonts = collectSourceFontFiles();
@@ -1513,6 +1683,13 @@ public class GraphHtmlService {
                     continue;
                 }
                 addRequestedFontKey(requestedFontKeys, background.tileText.getFont());
+            }
+        }
+        if (masks != null) {
+            for (MaskNodePayload mask : masks) {
+                if (mask != null && mask.getText() != null) {
+                    addRequestedFontKey(requestedFontKeys, mask.getText().getFont());
+                }
             }
         }
 

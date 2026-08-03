@@ -27,6 +27,71 @@ public class NodeControllerTest {
 
     @Test
     @WithMockUser
+    public void testProcessNodesWithMaskedImage() throws Exception {
+        String json = """
+                {
+                  "userid": "mask-test-user",
+                  "userHandle": "mask-test-user",
+                  "pagesData": [
+                    {
+                      "id": "1",
+                      "type": "pageNode",
+                      "data": {
+                        "name": "mask-test.html",
+                        "width": 640,
+                        "height": 480,
+                        "metadata": {
+                          "sourceNodes": [
+                            {
+                              "nodeId": "3",
+                              "type": "maskNode",
+                              "handleType": "red-output",
+                              "data": {
+                                "width": 200,
+                                "height": 100,
+                                "metadata": {
+                                  "sourceNodes": [
+                                    {
+                                      "nodeId": "2",
+                                      "type": "imageNode",
+                                      "handleType": "orange-output",
+                                      "data": {
+                                        "path": "https://example.com/large.png",
+                                        "width": 800,
+                                        "height": 600,
+                                        "positionX": 25,
+                                        "positionY": 35,
+                                        "opacity": 1
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        Path generatedFile = Path.of("generated-pages", "mask-test-user", "mask-test.html");
+        String generatedHtml = Files.readString(generatedFile);
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("const MASK_NODES = [{\"x\":25,\"y\":35,\"width\":200,\"height\":100"));
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("wrapper.style.overflow = \"auto\""));
+        org.junit.jupiter.api.Assertions.assertFalse(generatedHtml.contains("const IMAGE_NODES = [{"));
+    }
+
+    @Test
+    @WithMockUser
     public void testProcessNodes() throws Exception {
         String json = """
                 {
