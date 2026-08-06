@@ -1251,6 +1251,44 @@ public class NodeControllerTest {
         );
     }
 
+    @Test
+    @WithMockUser
+    public void testProcessNodesWithAutoPageDimensionsUsesOpeningViewport() throws Exception {
+        String json = """
+                {
+                  "userid": "auto-page-user",
+                  "userHandle": "auto-page-user",
+                  "nodes": [
+                    {
+                      "id": "1",
+                      "type": "pageNode",
+                      "data": {
+                        "name": "auto-page",
+                        "width": 640,
+                        "height": 480,
+                        "autoWidth": true,
+                        "autoHeight": true
+                      }
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        Path generatedFile = Path.of("generated-pages", "auto-page-user", "auto-page.html");
+        String generatedHtml = Files.readString(generatedFile, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("const PAGE_AUTO_WIDTH = true;"));
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("const PAGE_AUTO_HEIGHT = true;"));
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("const CANVAS_W = PAGE_AUTO_WIDTH ? Math.max(1, window.innerWidth) : CONFIGURED_CANVAS_W;"));
+        org.junit.jupiter.api.Assertions.assertTrue(generatedHtml.contains("const CANVAS_H = PAGE_AUTO_HEIGHT ? Math.max(1, window.innerHeight) : CONFIGURED_CANVAS_H;"));
+    }
+
     private static String toSha256Hex(byte[] input) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(input);

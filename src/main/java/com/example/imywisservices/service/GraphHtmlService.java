@@ -197,6 +197,8 @@ public class GraphHtmlService {
         String html = buildHtml(
                 canvasWidth,
                 canvasHeight,
+                Boolean.TRUE.equals(data.getAutoWidth()),
+                Boolean.TRUE.equals(data.getAutoHeight()),
                 data.getBackgroundColor(),
                 data.getMousePointer(),
                 toJson(backgrounds),
@@ -551,6 +553,8 @@ public class GraphHtmlService {
 
     private String buildHtml(int canvasWidth,
                              int canvasHeight,
+                             boolean autoWidth,
+                             boolean autoHeight,
                              String backgroundColor,
                              String mousePointer,
                              String backgroundJson,
@@ -619,8 +623,12 @@ public class GraphHtmlService {
                       const FONT_ASSETS = __FONT_ASSETS__;
                       const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
                       const MOUSE_POINTER_SRC = __MOUSE_POINTER_SRC__;
-                      const CANVAS_W = __CANVAS_W__;
-                      const CANVAS_H = __CANVAS_H__;
+                      const CONFIGURED_CANVAS_W = __CANVAS_W__;
+                      const CONFIGURED_CANVAS_H = __CANVAS_H__;
+                      const PAGE_AUTO_WIDTH = __PAGE_AUTO_WIDTH__;
+                      const PAGE_AUTO_HEIGHT = __PAGE_AUTO_HEIGHT__;
+                      const CANVAS_W = PAGE_AUTO_WIDTH ? Math.max(1, window.innerWidth) : CONFIGURED_CANVAS_W;
+                      const CANVAS_H = PAGE_AUTO_HEIGHT ? Math.max(1, window.innerHeight) : CONFIGURED_CANVAS_H;
 
                       const TILE_STYLE = "tile";
                       const FULLSCREEN_STYLE = "fullscreen";
@@ -633,6 +641,9 @@ public class GraphHtmlService {
                       const mousePointerElement = document.getElementById("mouse-pointer");
                       const clickableBindings = [];
                       let hasCustomMousePointer = false;
+
+                      stageElement.style.width = `${CANVAS_W}px`;
+                      stageElement.style.height = `${CANVAS_H}px`;
 
                       function showWeb1Popup() {
                         const popupShown = localStorage.getItem("imywis_popup_shown");
@@ -1493,7 +1504,9 @@ public class GraphHtmlService {
                 .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
                 .replace("__MOUSE_POINTER_SRC__", toJsonValue(safeMousePointer))
                 .replace("__CANVAS_W__", String.valueOf(canvasWidth))
-                .replace("__CANVAS_H__", String.valueOf(canvasHeight));
+                .replace("__CANVAS_H__", String.valueOf(canvasHeight))
+                .replace("__PAGE_AUTO_WIDTH__", String.valueOf(autoWidth))
+                .replace("__PAGE_AUTO_HEIGHT__", String.valueOf(autoHeight));
     }
 
     private String toJson(Object value) {
@@ -2006,7 +2019,13 @@ public class GraphHtmlService {
             int width = positiveIntOrDefault(data.getWidth(), DEFAULT_CANVAS_WIDTH);
             int height = positiveIntOrDefault(data.getHeight(), DEFAULT_CANVAS_HEIGHT);
             boolean popup = Boolean.TRUE.equals(data.getPopUp());
-            pageConfigs.put(targetPage, new PageTargetConfig(popup, width, height));
+            pageConfigs.put(targetPage, new PageTargetConfig(
+                    popup,
+                    width,
+                    height,
+                    Boolean.TRUE.equals(data.getAutoWidth()),
+                    Boolean.TRUE.equals(data.getAutoHeight())
+            ));
         }
 
         return pageConfigs;
@@ -2081,8 +2100,8 @@ public class GraphHtmlService {
                             targetPage,
                             DEFAULT_CLICK_TARGET_WINDOW,
                             pageConfig.popup(),
-                            pageConfig.width(),
-                            pageConfig.height()
+                            pageConfig.autoWidth() ? null : pageConfig.width(),
+                            pageConfig.autoHeight() ? null : pageConfig.height()
                     );
                 }
                 continue;
@@ -2124,7 +2143,7 @@ public class GraphHtmlService {
                                       Integer popupHeight) {
     }
 
-    private record PageTargetConfig(boolean popup, int width, int height) {
+    private record PageTargetConfig(boolean popup, int width, int height, boolean autoWidth, boolean autoHeight) {
     }
 
     private record FontAssetPayload(String family, String src) {
