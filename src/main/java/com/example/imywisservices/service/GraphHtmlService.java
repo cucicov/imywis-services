@@ -627,8 +627,8 @@ public class GraphHtmlService {
                       const CONFIGURED_CANVAS_H = __CANVAS_H__;
                       const PAGE_AUTO_WIDTH = __PAGE_AUTO_WIDTH__;
                       const PAGE_AUTO_HEIGHT = __PAGE_AUTO_HEIGHT__;
-                      const CANVAS_W = PAGE_AUTO_WIDTH ? Math.max(1, window.innerWidth) : CONFIGURED_CANVAS_W;
-                      const CANVAS_H = PAGE_AUTO_HEIGHT ? Math.max(1, window.innerHeight) : CONFIGURED_CANVAS_H;
+                      const CANVAS_W = PAGE_AUTO_WIDTH ? Math.max(CONFIGURED_CANVAS_W, window.innerWidth) : CONFIGURED_CANVAS_W;
+                      const CANVAS_H = PAGE_AUTO_HEIGHT ? Math.max(CONFIGURED_CANVAS_H, window.innerHeight) : CONFIGURED_CANVAS_H;
 
                       const TILE_STYLE = "tile";
                       const FULLSCREEN_STYLE = "fullscreen";
