@@ -3,6 +3,7 @@ package com.example.imywisservices.dto;
 import lombok.Data;
 
 import java.util.Objects;
+import java.util.List;
 
 @Data
 public class TextNodePayload {
@@ -28,6 +29,7 @@ public class TextNodePayload {
     public final boolean clickTargetPopup;
     public final Integer clickTargetPopupWidth;
     public final Integer clickTargetPopupHeight;
+    public final List<ClickTarget> clickTargets;
 
     public TextNodePayload(String text,
                            String color,
@@ -48,9 +50,10 @@ public class TextNodePayload {
                            boolean caps,
                            String clickTarget,
                            String clickTargetWindow,
-                           boolean clickTargetPopup,
-                           Integer clickTargetPopupWidth,
-                           Integer clickTargetPopupHeight) {
+                             boolean clickTargetPopup,
+                             Integer clickTargetPopupWidth,
+                             Integer clickTargetPopupHeight,
+                             List<ClickTarget> clickTargets) {
         this.text = Objects.requireNonNullElse(text, "");
         this.color = color;
         this.align = align;
@@ -73,5 +76,6 @@ public class TextNodePayload {
         this.clickTargetPopup = clickTargetPopup;
         this.clickTargetPopupWidth = clickTargetPopupWidth;
         this.clickTargetPopupHeight = clickTargetPopupHeight;
+        this.clickTargets = clickTargets;
     }
 }

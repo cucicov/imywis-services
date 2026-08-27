@@ -3,6 +3,7 @@ package com.example.imywisservices.dto;
 import lombok.Data;
 
 import java.util.Objects;
+import java.util.List;
 
 @Data
 public class ImageNodePayload {
@@ -11,6 +12,7 @@ public class ImageNodePayload {
     public final int y;
     public final Integer width;
     public final Integer height;
+    public final double scale;
     public final boolean autoWidth;
     public final boolean autoHeight;
     public final double opacity;
@@ -19,12 +21,14 @@ public class ImageNodePayload {
     public final boolean clickTargetPopup;
     public final Integer clickTargetPopupWidth;
     public final Integer clickTargetPopupHeight;
+    public final List<ClickTarget> clickTargets;
 
     public ImageNodePayload(String src,
                              int x,
                              int y,
                              Integer width,
                              Integer height,
+                             double scale,
                              boolean autoWidth,
                              boolean autoHeight,
                              double opacity,
@@ -32,12 +36,14 @@ public class ImageNodePayload {
                              String clickTargetWindow,
                              boolean clickTargetPopup,
                              Integer clickTargetPopupWidth,
-                             Integer clickTargetPopupHeight) {
+                             Integer clickTargetPopupHeight,
+                             List<ClickTarget> clickTargets) {
         this.src = Objects.requireNonNull(src);
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.scale = scale;
         this.autoWidth = autoWidth;
         this.autoHeight = autoHeight;
         this.opacity = opacity;
@@ -46,5 +52,6 @@ public class ImageNodePayload {
         this.clickTargetPopup = clickTargetPopup;
         this.clickTargetPopupWidth = clickTargetPopupWidth;
         this.clickTargetPopupHeight = clickTargetPopupHeight;
+        this.clickTargets = clickTargets;
     }
 }

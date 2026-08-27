@@ -27,6 +27,7 @@ public class NodeDataDTO {
     private Integer size;
     private Integer width;
     private Integer height;
+    private Double scale;
     private Boolean autoWidth;
     private Boolean autoHeight;
     private Boolean popUp;
