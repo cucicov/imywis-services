@@ -46,6 +46,7 @@ public class GraphHtmlService {
     private static final String OUTPUT_DIR_ENV = "GENERATED_PAGES_DIR";
     private static final String PAGE_NODE_TYPE = "pageNode";
     private static final String IMAGE_NODE_TYPE = "imageNode";
+    private static final String SOUND_NODE_TYPE = "soundNode";
     private static final String BACKGROUND_NODE_TYPE = "backgroundNode";
     private static final String TEXT_NODE_TYPE = "textNode";
     private static final String EVENT_NODE_TYPE = "eventNode";
@@ -56,6 +57,7 @@ public class GraphHtmlService {
     private static final String TILE_STYLE = "tile";
     private static final String FULLSCREEN_STYLE = "fullscreen";
     private static final String IMAGE_DIR_NAME = "img";
+    private static final String SOUND_DIR_NAME = "audio";
     private static final String RESOURCES_DIR_NAME = "resources";
     private static final String FONTS_DIR_NAME = "fonts";
     private static final Set<String> FONT_FILE_EXTENSIONS = Set.of(".ttf", ".otf", ".woff", ".woff2");
@@ -189,6 +191,7 @@ public class GraphHtmlService {
         List<BackgroundNodePayload> backgrounds = extractBackgroundNodes(data.getMetadata(), canvasWidth, canvasHeight, pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<ImageNodePayload> images = extractImageNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         List<TextNodePayload> texts = extractTextNodes(data.getMetadata(), pageTargetConfigs);
+        List<SoundNodePayload> sounds = extractSoundNodes(data.getMetadata(), outputDir, userHandle);
         List<MaskNodePayload> masks = extractMaskNodes(data.getMetadata(), pageTargetConfigs, outputDir, localImagePathCache, userHandle);
         Map<String, FontAssetPayload> fontAssets = packFontAssetsForPage(texts, backgrounds, masks, outputDir, userHandle);
         copyFaviconToUserDir(outputDir, userHandle);
@@ -204,6 +207,7 @@ public class GraphHtmlService {
                 toJson(backgrounds),
                 toJson(images),
                 toJson(texts),
+                toJson(sounds),
                 toJson(masks),
                 toJson(fontAssets),
                 userHandle,
@@ -213,6 +217,17 @@ public class GraphHtmlService {
         Files.createDirectories(outputDir);
         Files.writeString(outputFile, html, StandardCharsets.UTF_8);
         return outputFile;
+    }
+
+    private List<SoundNodePayload> extractSoundNodes(MetadataDTO metadata, Path outputDir, String userHandle) throws Exception {
+        if (metadata == null || metadata.getSourceNodes() == null) return Collections.emptyList();
+        List<SoundNodePayload> sounds = new ArrayList<>();
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !SOUND_NODE_TYPE.equals(node.getType()) || node.getData() == null) continue;
+            String source = resolveSoundSource(node.getData(), outputDir, userHandle);
+            if (!source.isBlank()) sounds.add(new SoundNodePayload(source, Boolean.TRUE.equals(node.getData().getAutoplay()), Boolean.TRUE.equals(node.getData().getLoop())));
+        }
+        return sounds;
     }
 
     private Path findMostRecentGeneratedFile() {
@@ -570,6 +585,7 @@ public class GraphHtmlService {
                              String backgroundJson,
                              String imagesJson,
                              String textJson,
+                             String soundsJson,
                              String masksJson,
                              String fontAssetsJson,
                              String userHandle,
@@ -629,6 +645,7 @@ public class GraphHtmlService {
                       const BACKGROUND_NODES = __BACKGROUND_NODES__;
                       const IMAGE_NODES = __IMAGE_NODES__;
                       const TEXT_NODES = __TEXT_NODES__;
+                      const SOUND_NODES = __SOUND_NODES__;
                       const MASK_NODES = __MASK_NODES__;
                       const FONT_ASSETS = __FONT_ASSETS__;
                       const PAGE_BACKGROUND_COLOR = __PAGE_BACKGROUND_COLOR__;
@@ -650,7 +667,64 @@ public class GraphHtmlService {
                       const maskLayerElement = document.getElementById("mask-layer");
                       const mousePointerElement = document.getElementById("mouse-pointer");
                       const clickableBindings = [];
+                      const activeSounds = [];
+                      let soundEnableButton = null;
                       let hasCustomMousePointer = false;
+
+                      function stopAllSounds() {
+                        activeSounds.splice(0).forEach(audio => { audio.pause(); audio.currentTime = 0; });
+                      }
+
+                      function playSounds(sounds) {
+                        if (!Array.isArray(sounds) || sounds.length === 0) return;
+                        stopAllSounds();
+                        let blocked = false;
+                        sounds.forEach(sound => {
+                          if (!sound || !sound.src) return;
+                          const audio = new Audio(sound.src);
+                          audio.loop = Boolean(sound.loop);
+                          activeSounds.push(audio);
+                          const promise = audio.play();
+                          if (promise && promise.catch) promise.catch(() => { blocked = true; showSoundEnableButton(); });
+                        });
+                        return blocked;
+                      }
+
+                      function showSoundEnableButton() {
+                        if (soundEnableButton || !Array.isArray(SOUND_NODES) || SOUND_NODES.length === 0) return;
+                        const overlay = document.createElement("div");
+                        overlay.style.cssText = "position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);font-family:Arial,sans-serif;text-align:center";
+                        const dialog = document.createElement("div");
+                        dialog.style.cssText = "width:min(420px,calc(100vw - 40px));padding:32px 28px;background:#FBB38D;color:#24130d;border:3px solid #fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,0.55)";
+                        const title = document.createElement("div");
+                        title.textContent = "Sound is waiting";
+                        title.style.cssText = "font-size:24px;font-weight:800;margin-bottom:12px";
+                        const message = document.createElement("div");
+                        message.textContent = "Your browser requires a click before this page can play audio.";
+                        message.style.cssText = "font-size:15px;line-height:1.45;margin-bottom:22px";
+                        soundEnableButton = document.createElement("button");
+                        soundEnableButton.textContent = "Enable sound";
+                        soundEnableButton.style.cssText = "display:block;width:100%;padding:14px 20px;background:#792D05;color:#fff;border:2px solid #24130d;border-radius:9px;cursor:pointer;font:bold 17px Arial,sans-serif;box-shadow:0 4px 0 #24130d";
+                        soundEnableButton.onclick = () => { playSounds(SOUND_NODES.filter(sound => sound.autoplay)); overlay.remove(); soundEnableButton = null; };
+                        dialog.appendChild(title);
+                        dialog.appendChild(message);
+                        dialog.appendChild(soundEnableButton);
+                        overlay.appendChild(dialog);
+                        document.body.appendChild(overlay);
+                      }
+
+                      function attemptAutoplay() {
+                        const autoplaySounds = SOUND_NODES.filter(sound => sound && sound.autoplay);
+                        if (!autoplaySounds.length) return;
+                        stopAllSounds();
+                        autoplaySounds.forEach(sound => {
+                          const audio = new Audio(sound.src);
+                          audio.loop = Boolean(sound.loop);
+                          activeSounds.push(audio);
+                          const promise = audio.play();
+                          if (promise && promise.catch) promise.catch(showSoundEnableButton);
+                        });
+                      }
 
                       stageElement.style.width = `${CANVAS_W}px`;
                       stageElement.style.height = `${CANVAS_H}px`;
@@ -780,6 +854,7 @@ public class GraphHtmlService {
                               popup: node.clickTargetPopup,
                               popupWidth: node.clickTargetPopupWidth,
                               popupHeight: node.clickTargetPopupHeight
+                              ,sounds: node.clickTargetSounds
                             }] : []);
                         return rawTargets.map(target => {
                           const url = typeof target.url === "string" ? target.url.trim() : "";
@@ -790,8 +865,9 @@ public class GraphHtmlService {
                             popup: Boolean(target.popup),
                             popupWidth: Math.max(0, Number(target.popupWidth) || 0),
                             popupHeight: Math.max(0, Number(target.popupHeight) || 0)
+                            ,sounds: Array.isArray(target.sounds) ? target.sounds : []
                           };
-                        }).filter(target => target.url);
+                        }).filter(target => target.url || target.sounds.length > 0);
                       }
 
                       function bindClickRedirect(element, node) {
@@ -810,7 +886,7 @@ public class GraphHtmlService {
                         const resolvedBindings = clickBindings.map(binding => ({
                           ...binding,
                           targetUrl: resolveNavigationUrl(binding.url)
-                        })).filter(binding => binding.targetUrl);
+                        })).filter(binding => binding.targetUrl || binding.sounds.length > 0);
                         if (resolvedBindings.length === 0) {
                           element.style.pointerEvents = "none";
                           element.style.cursor = "default";
@@ -826,9 +902,15 @@ public class GraphHtmlService {
                         element.style.cursor = "pointer";
                         const primaryBinding = resolvedBindings.find(binding => !binding.popup) || resolvedBindings[0];
                         element.__imywisClickTargets = resolvedBindings;
-                        element.setAttribute("data-click-target", primaryBinding.targetUrl);
-                        element.setAttribute("data-click-target-window", primaryBinding.targetWindow);
-                        element.setAttribute("data-click-target-popup", primaryBinding.popup ? "true" : "false");
+                        if (primaryBinding.targetUrl) {
+                          element.setAttribute("data-click-target", primaryBinding.targetUrl);
+                          element.setAttribute("data-click-target-window", primaryBinding.targetWindow);
+                          element.setAttribute("data-click-target-popup", primaryBinding.popup ? "true" : "false");
+                        } else {
+                          element.removeAttribute("data-click-target");
+                          element.removeAttribute("data-click-target-window");
+                          element.removeAttribute("data-click-target-popup");
+                        }
                         if (primaryBinding.popupWidth > 0) {
                           element.setAttribute("data-click-target-popup-width", String(primaryBinding.popupWidth));
                         } else {
@@ -875,10 +957,11 @@ public class GraphHtmlService {
 
                       function navigateToTargets(targets) {
                         const validTargets = Array.isArray(targets) ? targets : [];
+                        validTargets.forEach(target => playSounds(target.sounds));
                         validTargets.filter(target => target.popup).forEach(target => {
                           openPopupWindow(target.targetUrl, target.popupWidth, target.popupHeight);
                         });
-                        const primary = validTargets.find(target => !target.popup);
+                        const primary = validTargets.find(target => !target.popup && target.targetUrl);
                         if (!primary) return;
                         if (primary.targetWindow === "_blank") {
                           window.open(primary.targetUrl, "_blank", "noopener,noreferrer");
@@ -941,6 +1024,7 @@ public class GraphHtmlService {
                               popup: item.getAttribute("data-click-target-popup") === "true",
                               popupWidth: Math.max(0, Number(item.getAttribute("data-click-target-popup-width")) || 0),
                               popupHeight: Math.max(0, Number(item.getAttribute("data-click-target-popup-height")) || 0)
+                              ,sounds: []
                             }]);
                             return;
                           }
@@ -1488,6 +1572,7 @@ public class GraphHtmlService {
                         buildTextNodes();
                         buildMaskNodes();
                         setupMousePointer();
+                        attemptAutoplay();
                         if (__SHOW_POPUP__) {
                           showWeb1Popup();
                         }
@@ -1515,6 +1600,7 @@ public class GraphHtmlService {
                 .replace("__BACKGROUND_NODES__", backgroundJson)
                 .replace("__IMAGE_NODES__", imagesJson)
                 .replace("__TEXT_NODES__", textJson)
+                .replace("__SOUND_NODES__", soundsJson)
                 .replace("__MASK_NODES__", masksJson)
                 .replace("__FONT_ASSETS__", fontAssetsJson)
                 .replace("__PAGE_BACKGROUND_COLOR__", toJsonValue(safeBackgroundColor))
@@ -1928,6 +2014,31 @@ public class GraphHtmlService {
         return path == null ? "" : path.trim();
     }
 
+    private String resolveSoundSource(NodeDataDTO data, Path outputDir, String userHandle) throws Exception {
+        if (data == null) return "";
+        String localDataUrl = data.getLocalSoundDataUrl();
+        if (localDataUrl != null && !localDataUrl.isBlank()) return saveLocalSoundDataUrl(localDataUrl, outputDir);
+        return data.getPath() == null ? "" : data.getPath().trim();
+    }
+
+    private String saveLocalSoundDataUrl(String dataUrl, Path outputDir) throws Exception {
+        var matcher = DATA_URL_PATTERN.matcher(dataUrl.trim());
+        if (!matcher.matches() || matcher.group(2) == null) throw new IllegalArgumentException("Invalid local sound data URL");
+        byte[] bytes = Base64.getMimeDecoder().decode(matcher.group(3).trim());
+        String mediaType = matcher.group(1) == null ? "audio/mpeg" : matcher.group(1).toLowerCase(Locale.ROOT);
+        String extension = switch (mediaType) {
+            case "audio/wav", "audio/x-wav" -> ".wav";
+            case "audio/ogg", "audio/vorbis" -> ".ogg";
+            default -> ".mp3";
+        };
+        String fileName = sha256Hex(bytes) + extension;
+        Path soundDir = outputDir.resolve(SOUND_DIR_NAME);
+        Files.createDirectories(soundDir);
+        Path soundFile = soundDir.resolve(fileName);
+        if (!Files.exists(soundFile)) Files.write(soundFile, bytes);
+        return "/" + SOUND_DIR_NAME + "/" + fileName;
+    }
+
     private String saveLocalImageDataUrl(String localImageDataUrl,
                                          Path outputDir,
                                          Map<String, String> localImagePathCache,
@@ -2134,6 +2245,7 @@ public class GraphHtmlService {
         }
 
         List<ClickTarget> targets = new ArrayList<>();
+        List<SoundNodePayload> sounds = extractEventSounds(eventData.getMetadata());
         for (NodeDTO metadataNode : eventData.getMetadata().getSourceNodes()) {
             if (metadataNode == null) {
                 continue;
@@ -2153,7 +2265,8 @@ public class GraphHtmlService {
                             DEFAULT_CLICK_TARGET_WINDOW,
                             pageConfig.popup(),
                             pageConfig.autoWidth() ? null : pageConfig.width(),
-                            pageConfig.autoHeight() ? null : pageConfig.height()
+                            pageConfig.autoHeight() ? null : pageConfig.height(),
+                            sounds
                     ));
                 }
                 continue;
@@ -2174,12 +2287,33 @@ public class GraphHtmlService {
                     normalizeClickTargetWindow(data.getTarget()),
                     false,
                     null,
-                    null
+                    null,
+                    sounds
                 ));
             }
         }
 
+        if (targets.isEmpty() && !sounds.isEmpty()) {
+            targets.add(new ClickTarget(null, DEFAULT_CLICK_TARGET_WINDOW, false, null, null, sounds));
+        }
+
         return targets.isEmpty() ? null : new ClickTargetPayload(targets);
+    }
+
+    private List<SoundNodePayload> extractEventSounds(MetadataDTO metadata) {
+        if (metadata == null || metadata.getSourceNodes() == null) return Collections.emptyList();
+        List<SoundNodePayload> sounds = new ArrayList<>();
+        for (NodeDTO node : metadata.getSourceNodes()) {
+            if (node == null || !SOUND_NODE_TYPE.equals(node.getType()) || node.getData() == null) continue;
+            NodeDataDTO data = node.getData();
+            String source = data.getPath();
+            if ((source == null || source.isBlank() || source.startsWith("local:"))
+                    && data.getLocalSoundDataUrl() != null && !data.getLocalSoundDataUrl().isBlank()) {
+                source = data.getLocalSoundDataUrl();
+            }
+            if (source != null && !source.isBlank()) sounds.add(new SoundNodePayload(source.trim(), false, Boolean.TRUE.equals(data.getLoop())));
+        }
+        return sounds;
     }
 
     private String normalizeClickTargetWindow(String requestedWindow) {

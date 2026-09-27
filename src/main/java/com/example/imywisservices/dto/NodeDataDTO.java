@@ -17,6 +17,8 @@ public class NodeDataDTO {
     private String backgroundColor;
     private String path;
     private String localImageDataUrl;
+    private String localSoundDataUrl;
+    private String localSoundFileName;
     private String url;
     private String target;
     private String text;
@@ -31,6 +33,8 @@ public class NodeDataDTO {
     private Boolean autoWidth;
     private Boolean autoHeight;
     private Boolean popUp;
+    private Boolean autoplay;
+    private Boolean loop;
     private Integer positionX;
     private Integer positionY;
     private Double opacity;
